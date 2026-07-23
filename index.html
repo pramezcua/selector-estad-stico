@@ -1,0 +1,1552 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Selector Estadístico · Guía para investigadores</title>
+<meta name="description" content="Asistente de selección de pruebas estadísticas, diccionario, catálogo de gráficos y auditor de modelos para investigadores." />
+<style>
+  /* ============ TOKENS ============ */
+  :root{
+    --font-display: ui-serif, "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-mono: ui-monospace, "Cascadia Mono", "Segoe UI Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+
+    --bg: #F5F7FB; --surface: #FFFFFF; --surface-2: #EEF2F9; --border: #DCE3EE;
+    --text: #101828; --text-muted: #5C6B82;
+    --accent: #1D4ED8; --accent-ink: #0B2E9E; --accent-soft: #E8EFFE; --accent-2: #0D9488;
+
+    --cat-parametrica: #2563EB; --cat-parametrica-soft: #E7EFFE;
+    --cat-no_parametrica: #0D9488; --cat-no_parametrica-soft: #E2F6F3;
+    --cat-asociacion: #7C3AED; --cat-asociacion-soft: #F1E9FE;
+    --cat-regresion: #B45309; --cat-regresion-soft: #FBEEDD;
+    --cat-supervivencia: #BE123C; --cat-supervivencia-soft: #FCE7EC;
+
+    --valid: #059669; --valid-soft: #E3F7EF; --invalid: #DC2626; --invalid-soft: #FCEAEA;
+
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.06); --shadow-md: 0 8px 24px -8px rgba(16,24,40,.16);
+    --radius: 10px; --radius-lg: 16px;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --bg: #0A0F1A; --surface: #111827; --surface-2: #1A2333; --border: #253048;
+      --text: #E7ECF5; --text-muted: #94A3B8;
+      --accent: #6C9BFA; --accent-ink:#BFD4FF; --accent-soft: #16233F; --accent-2: #2DD4BF;
+      --cat-parametrica: #6C9BFA; --cat-parametrica-soft: #172445;
+      --cat-no_parametrica: #2DD4BF; --cat-no_parametrica-soft: #12302C;
+      --cat-asociacion: #A78BFA; --cat-asociacion-soft: #241C42;
+      --cat-regresion: #F0A94E; --cat-regresion-soft: #3A2712;
+      --cat-supervivencia: #FB7185; --cat-supervivencia-soft: #3A121C;
+      --valid: #34D399; --valid-soft: #0F2A22; --invalid: #F87171; --invalid-soft: #341417;
+      --shadow-sm: 0 1px 2px rgba(0,0,0,.3); --shadow-md: 0 12px 32px -10px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --bg: #0A0F1A; --surface: #111827; --surface-2: #1A2333; --border: #253048;
+    --text: #E7ECF5; --text-muted: #94A3B8; --accent: #6C9BFA; --accent-ink:#BFD4FF; --accent-soft: #16233F; --accent-2: #2DD4BF;
+    --cat-parametrica: #6C9BFA; --cat-parametrica-soft: #172445;
+    --cat-no_parametrica: #2DD4BF; --cat-no_parametrica-soft: #12302C;
+    --cat-asociacion: #A78BFA; --cat-asociacion-soft: #241C42;
+    --cat-regresion: #F0A94E; --cat-regresion-soft: #3A2712;
+    --cat-supervivencia: #FB7185; --cat-supervivencia-soft: #3A121C;
+    --valid: #34D399; --valid-soft: #0F2A22; --invalid: #F87171; --invalid-soft: #341417;
+    --shadow-sm: 0 1px 2px rgba(0,0,0,.3); --shadow-md: 0 12px 32px -10px rgba(0,0,0,.55);
+  }
+  :root[data-theme="light"]{
+    --bg: #F5F7FB; --surface: #FFFFFF; --surface-2: #EEF2F9; --border: #DCE3EE;
+    --text: #101828; --text-muted: #5C6B82; --accent: #1D4ED8; --accent-ink:#0B2E9E; --accent-soft: #E8EFFE; --accent-2: #0D9488;
+    --cat-parametrica: #2563EB; --cat-parametrica-soft: #E7EFFE;
+    --cat-no_parametrica: #0D9488; --cat-no_parametrica-soft: #E2F6F3;
+    --cat-asociacion: #7C3AED; --cat-asociacion-soft: #F1E9FE;
+    --cat-regresion: #B45309; --cat-regresion-soft: #FBEEDD;
+    --cat-supervivencia: #BE123C; --cat-supervivencia-soft: #FCE7EC;
+    --valid: #059669; --valid-soft: #E3F7EF; --invalid: #DC2626; --invalid-soft: #FCEAEA;
+    --shadow-sm: 0 1px 2px rgba(16,24,40,.06); --shadow-md: 0 8px 24px -8px rgba(16,24,40,.16);
+  }
+
+  /* ============ RESET / BASE ============ */
+  *,*::before,*::after{ box-sizing: border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family: var(--font-body); line-height:1.5; font-size:16px; -webkit-font-smoothing:antialiased; }
+  h1,h2,h3,h4{ font-family: var(--font-display); font-weight:600; margin:0; text-wrap: balance; color:var(--text); }
+  p{ margin:0; } button{ font-family:inherit; } ul{ margin:0; padding:0; list-style:none; }
+  textarea{ font-family:inherit; }
+  ::selection{ background:var(--accent-soft); }
+  :focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+  @media (prefers-reduced-motion: reduce){ *{ animation-duration:.001ms !important; transition-duration:.001ms !important; scroll-behavior:auto !important; } }
+
+  /* ============ HEADER / TABS ============ */
+  .app-header{ position:sticky; top:0; z-index:30; background:color-mix(in srgb, var(--surface) 92%, transparent); backdrop-filter: blur(8px); border-bottom:1px solid var(--border); }
+  .app-header-inner{ max-width:1180px; margin:0 auto; padding:.75rem 1.25rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+  .brand{ display:flex; align-items:center; gap:.65rem; }
+  .brand-text h1{ font-size:1.05rem; letter-spacing:.01em; }
+  .brand-text .eyebrow{ display:block; font-family:var(--font-mono); font-size:.68rem; letter-spacing:.08em; text-transform:uppercase; color:var(--text-muted); margin-bottom:.1rem; }
+  .brand-text .author{ display:block; font-size:.72rem; color:var(--text-muted); margin-top:.05rem; }
+  .header-controls{ display:flex; align-items:center; gap:.6rem; }
+  .segmented{ display:inline-flex; background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:3px; gap:2px; max-width:100%; overflow-x:auto; }
+  .segmented button{ border:none; background:transparent; color:var(--text-muted); padding:.45rem .9rem; border-radius:999px; font-size:.86rem; font-weight:600; cursor:pointer; white-space:nowrap; transition: background .15s ease, color .15s ease; }
+  .segmented button[aria-selected="true"]{ background:var(--accent); color:#fff; }
+  .segmented button:not([aria-selected="true"]):hover{ color:var(--text); }
+  .icon-btn{ width:36px; height:36px; border-radius:999px; border:1px solid var(--border); background:var(--surface); color:var(--text-muted); display:flex; align-items:center; justify-content:center; cursor:pointer; flex:none; transition: color .15s ease, border-color .15s ease; }
+  .icon-btn:hover{ color:var(--accent); border-color:var(--accent); }
+  .icon-btn svg{ width:18px; height:18px; }
+
+  main{ max-width:1180px; margin:0 auto; padding:2.25rem 1.25rem 4rem; }
+  .tabpanel[hidden]{ display:none; }
+
+  /* ============ SUBNAV (Diccionario) ============ */
+  .subnav{ display:flex; flex-wrap:wrap; gap:.5rem; margin-bottom:1.5rem; }
+  .subnav button{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.5rem 1rem; border-radius:999px; font-size:.85rem; font-weight:600; cursor:pointer; }
+  .subnav button[aria-pressed="true"]{ background:var(--text); border-color:var(--text); color:var(--bg); }
+  :root[data-theme="dark"] .subnav button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  @media (prefers-color-scheme: dark){ .subnav button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; } }
+
+  /* ============ WIZARD ============ */
+  .wizard-shell{ max-width:660px; margin:0 auto; }
+  .breadcrumb{ display:flex; flex-wrap:wrap; gap:.4rem; margin-bottom:1.5rem; min-height:1.6rem; }
+  .crumb{ font-family:var(--font-mono); font-size:.72rem; letter-spacing:.02em; color:var(--text-muted); background:var(--surface-2); border:1px solid var(--border); padding:.25rem .6rem; border-radius:999px; }
+  .crumb-sep{ color:var(--border); align-self:center; }
+
+  .q-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); padding:2rem 1.9rem; }
+  .kicker{ font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--accent); margin-bottom:.6rem; display:block; }
+  .q-card h2{ font-size:1.5rem; line-height:1.3; margin-bottom:.35rem; }
+  .q-help{ color:var(--text-muted); font-size:.87rem; line-height:1.55; margin-top:.5rem; }
+  .options{ display:flex; flex-direction:column; gap:.6rem; margin-top:1.4rem; }
+  .option-btn{ text-align:left; width:100%; background:var(--surface); border:1.5px solid var(--border); color:var(--text); border-radius:var(--radius); padding:.9rem 1rem; font-size:.98rem; font-weight:500; cursor:pointer; display:flex; align-items:center; justify-content:space-between; gap:.75rem; transition:border-color .15s ease, background .15s ease; }
+  .option-btn:hover{ border-color:var(--accent); background:var(--accent-soft); }
+  .option-btn svg{ width:16px; height:16px; flex:none; color:var(--accent); opacity:.7; }
+
+  .wizard-footer{ display:flex; justify-content:space-between; align-items:center; margin-top:1.25rem; }
+  .text-btn{ background:none; border:none; color:var(--text-muted); font-size:.85rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:.35rem; padding:.4rem .2rem; }
+  .text-btn:hover{ color:var(--accent); }
+  .text-btn svg{ width:15px; height:15px; }
+  .text-btn:disabled{ opacity:.35; cursor:default; }
+  .text-btn:disabled:hover{ color:var(--text-muted); }
+
+  .result-card, .verdict-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); padding:2.1rem 1.9rem; position:relative; overflow:hidden; }
+  .result-card::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg, var(--accent), var(--accent-2)); }
+  .verdict-card.is-valid::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg, var(--valid), var(--accent-2)); }
+  .verdict-card.is-invalid::before{ content:""; position:absolute; inset:0 0 auto 0; height:4px; background:linear-gradient(90deg, var(--invalid), #f59e0b); }
+  .result-kicker{ font-family:var(--font-mono); font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--text-muted); display:block; margin-bottom:.5rem; }
+  .result-name{ font-size:1.7rem; margin-bottom:.6rem; }
+  .badge-row{ display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1.1rem; }
+  .badge{ font-size:.72rem; font-weight:700; letter-spacing:.03em; padding:.28rem .65rem; border-radius:999px; font-family:var(--font-mono); display:inline-flex; }
+  .badge-parametrica{ background:var(--cat-parametrica-soft); color:var(--cat-parametrica); }
+  .badge-no_parametrica{ background:var(--cat-no_parametrica-soft); color:var(--cat-no_parametrica); }
+  .badge-asociacion{ background:var(--cat-asociacion-soft); color:var(--cat-asociacion); }
+  .badge-regresion{ background:var(--cat-regresion-soft); color:var(--cat-regresion); }
+  .badge-supervivencia{ background:var(--cat-supervivencia-soft); color:var(--cat-supervivencia); }
+
+  .result-just{ color:var(--text); font-size:1rem; line-height:1.65; margin-bottom:1.2rem; }
+  .alt-box{ background:var(--surface-2); border:1px dashed var(--border); border-radius:var(--radius); padding:.9rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:1rem; margin-bottom:1.2rem; flex-wrap:wrap; }
+  .alt-box .alt-label{ font-size:.72rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); font-family:var(--font-mono); display:block; margin-bottom:.15rem; }
+  .alt-box .alt-name{ font-weight:600; }
+  .chart-box{ background:var(--cat-no_parametrica-soft); border:1px solid var(--border); border-radius:var(--radius); padding:.9rem 1rem; margin-bottom:1.2rem; }
+  .chart-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--cat-no_parametrica); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
+  .chart-box .chart-name{ font-weight:700; font-size:.95rem; margin-bottom:.3rem; display:block; }
+  .chart-box p{ font-size:.88rem; line-height:1.55; color:var(--text); margin-bottom:.5rem; }
+  .req-block{ margin-top:1.2rem; }
+  .req-block .req-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.6rem; }
+
+  .btn{ border-radius:999px; padding:.7rem 1.3rem; font-size:.9rem; font-weight:700; cursor:pointer; border:1.5px solid transparent; display:inline-flex; align-items:center; gap:.45rem; transition:opacity .15s ease, background .15s ease; }
+  .btn-primary{ background:var(--accent); color:#fff; } .btn-primary:hover{ opacity:.9; }
+  .btn-invalid{ background:var(--invalid); color:#fff; } .btn-invalid:hover{ opacity:.9; }
+  .btn-ghost{ background:transparent; border-color:var(--border); color:var(--text); } .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
+  .btn-sm{ padding:.5rem .95rem; font-size:.78rem; }
+  .result-actions{ display:flex; gap:.7rem; flex-wrap:wrap; margin-top:1.6rem; }
+
+  .guidance-list{ margin-top:.9rem; display:flex; flex-direction:column; gap:.5rem; }
+  .guidance-link{ display:flex; align-items:center; justify-content:space-between; background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:.7rem .9rem; cursor:pointer; font-weight:600; font-size:.9rem; color:var(--text); width:100%; text-align:left; }
+  .guidance-link:hover{ border-color:var(--accent); color:var(--accent); }
+  .guidance-link .note{ font-weight:400; color:var(--text-muted); }
+
+  /* ============ SEARCH / FILTERS ============ */
+  .toolbar{ position:sticky; top:60px; z-index:20; background:var(--bg); padding:.5rem 0 1rem; }
+  .search-wrap{ position:relative; margin-bottom:.8rem; }
+  .search-wrap svg{ position:absolute; left:.9rem; top:50%; transform:translateY(-50%); width:17px; height:17px; color:var(--text-muted); }
+  .search-input{ width:100%; padding:.75rem 1rem .75rem 2.5rem; border-radius:999px; border:1.5px solid var(--border); background:var(--surface); color:var(--text); font-size:.95rem; }
+  .search-input:focus-visible{ border-color:var(--accent); }
+  .chip-row{ display:flex; gap:.5rem; flex-wrap:wrap; }
+  .chip{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.4rem .85rem; border-radius:999px; font-size:.82rem; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:.4rem; }
+  .chip .count{ font-family:var(--font-mono); font-size:.72rem; opacity:.7; }
+  .chip[aria-pressed="true"]{ background:var(--text); border-color:var(--text); color:var(--bg); }
+  :root[data-theme="dark"] .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  @media (prefers-color-scheme: dark){ .chip[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; } }
+
+  /* ============ CARDS (diccionario / gráficos) ============ */
+  .card-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:1rem; margin-top:.5rem; }
+  .xcard{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-sm); overflow:hidden; transition: box-shadow .15s ease, border-color .3s ease; }
+  .xcard.highlight{ border-color:var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .xcard-head{ width:100%; text-align:left; background:none; border:none; color:var(--text); cursor:pointer; padding:1.1rem 1.2rem; display:flex; flex-direction:column; gap:.55rem; }
+  .xcard-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:.6rem; }
+  .xcard-top h3{ font-size:1.08rem; line-height:1.3; }
+  .xcard-top svg{ width:18px; height:18px; flex:none; color:var(--text-muted); transition:transform .18s ease; margin-top:.15rem; }
+  .xcard[data-open="true"] .xcard-top svg{ transform:rotate(180deg); }
+  .xcard-def{ color:var(--text-muted); font-size:.87rem; line-height:1.55; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .xcard[data-open="true"] .xcard-def{ -webkit-line-clamp:unset; }
+  .badges-sm{ display:flex; gap:.4rem; flex-wrap:wrap; }
+  .badges-sm .badge{ font-size:.66rem; padding:.22rem .55rem; }
+  .xcard-body{ padding:0 1.2rem 1.3rem; display:none; }
+  .xcard[data-open="true"] .xcard-body{ display:block; }
+  .xcard-body h4{ font-size:.72rem; text-transform:uppercase; letter-spacing:.07em; color:var(--text-muted); font-family:var(--font-mono); margin:1.1rem 0 .5rem; }
+  .xcard-body p{ font-size:.92rem; line-height:1.6; color:var(--text); }
+  .uses-list li{ position:relative; padding-left:1.1rem; font-size:.9rem; line-height:1.55; margin-bottom:.4rem; color:var(--text); }
+  .uses-list li::before{ content:"–"; position:absolute; left:0; color:var(--accent); }
+  .assump-list li{ display:flex; gap:.55rem; align-items:flex-start; font-size:.87rem; line-height:1.5; margin-bottom:.5rem; }
+  .assump-list svg{ width:15px; height:15px; flex:none; color:var(--accent-2); margin-top:.15rem; }
+
+  /* ---- ilustraciones de gráficos (Catálogo de Gráficos) ---- */
+  .chart-illustration{ width:100%; height:auto; display:block; background:var(--surface-2); border:1px solid var(--border); border-radius:8px; margin-bottom:.85rem; }
+  .ci-axis{ stroke:var(--text-muted); stroke-width:1; }
+  .ci-ref{ stroke:var(--text-muted); stroke-width:1; stroke-dasharray:3 3; }
+  .ci-a{ stroke:var(--accent); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ci-b{ stroke:var(--accent-2); fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+  .ci-wk{ stroke:var(--accent); stroke-width:1.3; }
+  .ci-a-fill{ fill:var(--accent); }
+  .ci-b-fill{ fill:var(--accent-2); }
+  .ci-a-soft{ fill:var(--accent-soft); stroke:var(--accent); stroke-width:1.3; }
+  .ci-b-soft{ fill:var(--cat-no_parametrica-soft); stroke:var(--accent-2); stroke-width:1.3; }
+  .ci-med{ stroke:var(--text); stroke-width:2; }
+  .ci-dot{ fill:var(--text-muted); }
+
+  .formula-box{ font-family:var(--font-mono); background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:1.1rem 1.15rem; overflow-x:auto; font-size:1.05rem; }
+  .formula-note{ font-size:.78rem; color:var(--text-muted); margin-top:.55rem; font-family:var(--font-body); line-height:1.5; }
+  .frac{ display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 .3em; line-height:1.15; }
+  .frac .num{ padding:0 .25em .12em; border-bottom:1.4px solid currentColor; }
+  .frac .den{ padding:.12em .25em 0; }
+  .formula-box sub, .formula-box sup{ font-size:.72em; }
+  .sqrt{ padding:0 .15em; }
+  .sqrt::before{ content:"√"; }
+  .sqrt .rad{ border-top:1.4px solid currentColor; padding:.05em .15em 0; }
+  .piecewise{ display:flex; flex-direction:column; gap:.5rem; }
+  .piecewise .cond{ font-size:.8rem; color:var(--text-muted); margin-left:.6em; font-family:var(--font-body); }
+
+  .related-row{ margin-top:1.2rem; display:flex; align-items:center; gap:.6rem; flex-wrap:wrap; }
+  .related-btn{ background:var(--accent-soft); color:var(--accent-ink); border:none; border-radius:999px; padding:.45rem .85rem; font-size:.82rem; font-weight:700; cursor:pointer; display:inline-flex; align-items:center; gap:.35rem; }
+  .related-btn:hover{ opacity:.85; }
+
+  .empty-state{ text-align:center; padding:3.5rem 1rem; color:var(--text-muted); }
+  .empty-state svg{ width:34px; height:34px; margin-bottom:.8rem; opacity:.6; }
+
+  /* ============ SECCIÓN B: tipos de variable ============ */
+  .vartype-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(260px,1fr)); gap:1rem; margin-bottom:2.2rem; }
+  .vartype-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.3rem; }
+  .vartype-card h3{ font-size:1.05rem; margin-bottom:.5rem; }
+  .vartype-card .vdesc{ font-size:.87rem; color:var(--text-muted); line-height:1.55; margin-bottom:.8rem; }
+  .vartype-card .vlabel{ font-size:.68rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.25rem; }
+  .vartype-card .vtests{ font-size:.87rem; line-height:1.5; }
+  .table-wrap{ overflow-x:auto; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:.4rem; }
+  table.vartable{ width:100%; border-collapse:collapse; font-size:.87rem; }
+  table.vartable th{ text-align:left; font-family:var(--font-mono); font-size:.68rem; text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); padding:.6rem .8rem; }
+  table.vartable td{ padding:.7rem .8rem; border-top:1px solid var(--border); }
+  table.vartable td.strong{ color:var(--accent-ink); font-weight:700; }
+  :root[data-theme="dark"] table.vartable td.strong{ color:var(--accent); }
+  @media (prefers-color-scheme: dark){ table.vartable td.strong{ color:var(--accent); } }
+  table.vartable td.muted{ color:var(--text-muted); }
+  .section-title{ font-size:1.1rem; margin-bottom:.9rem; }
+
+  /* ============ SECCIÓN D: transformaciones ============ */
+  .transform-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); padding:1.3rem; }
+  .transform-card h3{ font-size:1.05rem; margin-bottom:.8rem; }
+  .transform-card .formula-box{ margin-bottom:.8rem; }
+  .transform-card .use{ font-size:.88rem; line-height:1.6; color:var(--text); }
+  .transform-card .use b{ color:var(--text); }
+
+  /* ============ AUDITOR ============ */
+  .audit-intro{ font-size:.92rem; color:var(--text-muted); line-height:1.6; margin:.6rem 0 1.8rem; max-width:56ch; }
+  .field-group{ margin-bottom:1.5rem; }
+  .field-label{ display:block; font-size:.74rem; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-muted); margin-bottom:.6rem; }
+  .field-label .opt{ font-weight:400; text-transform:none; letter-spacing:0; color:var(--text-muted); }
+  .chip-field{ display:flex; flex-wrap:wrap; gap:.5rem; }
+  .chip-field button{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.45rem .9rem; border-radius:999px; font-size:.82rem; font-weight:700; cursor:pointer; }
+  .chip-field button[aria-pressed="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .select-input, .num-input{ border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:var(--radius); padding:.75rem 1rem; font-size:.92rem; font-weight:500; font-family:inherit; }
+  .select-input{ width:100%; }
+  .num-input{ width:9rem; }
+  .select-input:focus-visible, .num-input:focus-visible{ border-color:var(--accent); }
+
+  .verdict-head{ display:flex; align-items:center; gap:.85rem; margin-bottom:1.2rem; }
+  .verdict-icon{ width:2.4rem; height:2.4rem; border-radius:999px; display:flex; align-items:center; justify-content:center; flex:none; }
+  .verdict-icon svg{ width:1.2rem; height:1.2rem; }
+  .is-valid .verdict-icon{ background:var(--valid-soft); color:var(--valid); }
+  .is-invalid .verdict-icon{ background:var(--invalid-soft); color:var(--invalid); }
+  .verdict-title{ font-size:.72rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.2rem; }
+  .verdict-value{ font-family:var(--font-display); font-size:1.35rem; font-weight:600; }
+  .is-valid .verdict-value{ color:var(--valid); } .is-invalid .verdict-value{ color:var(--invalid); }
+  .violation-list{ margin-bottom:1.3rem; }
+  .violation-list .vl-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; margin-bottom:.6rem; display:block; }
+  .violation-list.errors .vl-title{ color:var(--invalid); }
+  .violation-list.warnings .vl-title{ color:#B45309; }
+  .violation-item{ display:flex; gap:.6rem; font-size:.9rem; line-height:1.55; margin-bottom:.7rem; }
+  .violation-item svg{ width:16px; height:16px; flex:none; margin-top:.15rem; }
+  .violation-item.err svg{ color:var(--invalid); } .violation-item.warn svg{ color:#B45309; }
+  .consequence-box{ background:var(--surface-2); border:1px solid var(--border); border-radius:var(--radius); padding:1rem 1.1rem; margin-bottom:1.2rem; }
+  .consequence-box h4{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:.5rem; }
+  .consequence-box p{ font-size:.89rem; line-height:1.6; }
+
+  /* ============ BUZÓN DE SUGERENCIAS ============ */
+  .fab-suggest{ position:fixed; right:1.25rem; bottom:1.25rem; z-index:40; background:var(--accent); color:#fff; border:none; border-radius:999px; padding:.8rem 1.15rem; display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:.85rem; cursor:pointer; box-shadow:var(--shadow-md); }
+  .fab-suggest:hover{ opacity:.92; }
+  .fab-suggest svg{ width:17px; height:17px; }
+  .modal-overlay{ position:fixed; inset:0; background:rgba(10,15,26,.55); backdrop-filter:blur(2px); z-index:50; display:flex; align-items:center; justify-content:center; padding:1.25rem; }
+  .modal-overlay[hidden]{ display:none; }
+  .modal-panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow-md); max-width:480px; width:100%; padding:1.8rem; position:relative; max-height:90vh; overflow-y:auto; }
+  .modal-close{ position:absolute; top:1rem; right:1rem; }
+  .modal-panel h2{ font-size:1.3rem; margin-bottom:.4rem; padding-right:2rem; }
+  .modal-panel .q-help{ margin-bottom:1.2rem; margin-top:0; }
+  .suggest-textarea{ width:100%; min-height:9rem; border:1.5px solid var(--border); background:var(--surface); color:var(--text); border-radius:var(--radius); padding:.85rem 1rem; font-size:.92rem; resize:vertical; }
+  .suggest-textarea:focus-visible{ border-color:var(--accent); }
+  .char-count{ font-size:.72rem; color:var(--text-muted); text-align:right; margin-top:.3rem; font-family:var(--font-mono); }
+  .suggest-note{ font-size:.78rem; color:var(--text-muted); margin-top:1rem; line-height:1.5; }
+
+  footer.app-footer{ text-align:center; padding:2rem 1rem 5.5rem; color:var(--text-muted); font-size:.8rem; }
+
+  @media (max-width: 640px){
+    .app-header-inner{ flex-direction:column; align-items:stretch; }
+    .header-controls{ justify-content:space-between; }
+    main{ padding-top:1.5rem; }
+    .q-card, .result-card, .verdict-card{ padding:1.4rem 1.15rem; }
+    .toolbar{ top:96px; }
+    .fab-suggest span{ display:none; }
+    .fab-suggest{ padding:.85rem; }
+    /* evita el zoom automático de iOS al enfocar campos con font-size < 16px */
+    .search-input, .select-input, .num-input, .suggest-textarea{ font-size:16px; }
+    .segmented{ width:100%; justify-content:space-between; }
+    .segmented button{ padding:.45rem .6rem; font-size:.78rem; flex:1; text-align:center; }
+    .modal-panel{ padding:1.4rem 1.1rem; }
+    .result-actions, .wizard-footer{ flex-wrap:wrap; }
+  }
+</style>
+</head>
+<body>
+
+<svg style="display:none" aria-hidden="true">
+  <symbol id="i-chevron" viewBox="0 0 20 20"><path d="M6 8l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-search" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M14 14l4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 20 20"><circle cx="10" cy="10" r="4" fill="none" stroke="currentColor" stroke-width="1.6"/><g stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M10 1.5v2M10 16.5v2M18.5 10h-2M3.5 10h-2M15.8 4.2l-1.4 1.4M5.6 14.4l-1.4 1.4M15.8 15.8l-1.4-1.4M5.6 5.6L4.2 4.2"/></g></symbol>
+  <symbol id="i-moon" viewBox="0 0 20 20"><path d="M17 12.2A7.2 7.2 0 0 1 7.8 3 7.2 7.2 0 1 0 17 12.2Z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 20 20"><path d="M7 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-back" viewBox="0 0 20 20"><path d="M13 4L7 10l6 6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-restart" viewBox="0 0 20 20"><path d="M4.5 10a5.5 5.5 0 1 1 2 4.24M4.5 10V5.5M4.5 10H9" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-check" viewBox="0 0 20 20"><path d="M4 10.5l3.6 3.6L16 5.5" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-empty" viewBox="0 0 20 20"><circle cx="9" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M14 14l4 4M6 9h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></symbol>
+  <symbol id="i-x" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
+  <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="6.3" r="1" fill="currentColor"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 20 20"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 5.5l7 5.5 7-5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+</svg>
+
+<header class="app-header">
+  <div class="app-header-inner">
+    <div class="brand">
+      <svg width="30" height="30" viewBox="0 0 28 28" fill="none" aria-hidden="true">
+        <line x1="4" y1="24" x2="4" y2="4" stroke="var(--accent)" stroke-width="1.5"/>
+        <line x1="4" y1="24" x2="25" y2="24" stroke="var(--accent)" stroke-width="1.5"/>
+        <line x1="6.5" y1="20.5" x2="21.5" y2="7.5" stroke="var(--accent)" stroke-width="1.2" stroke-dasharray="2 2.4"/>
+        <circle cx="8" cy="18" r="1.5" fill="var(--accent-2)"/><circle cx="12" cy="14" r="1.5" fill="var(--accent-2)"/>
+        <circle cx="10.5" cy="10.5" r="1.5" fill="var(--accent-2)"/><circle cx="17" cy="9.5" r="1.5" fill="var(--accent-2)"/><circle cx="20" cy="6.5" r="1.5" fill="var(--accent-2)"/>
+      </svg>
+      <div class="brand-text"><span class="eyebrow">Guía para investigadores</span><h1>Selector Estadístico</h1><span class="author">Pablo Ruiz Amezcua</span></div>
+    </div>
+    <div class="header-controls">
+      <div class="segmented" role="tablist" aria-label="Secciones">
+        <button id="tab-btn-wizard" data-tab="wizard" role="tab" aria-selected="true">Asistente</button>
+        <button id="tab-btn-dict" data-tab="dict" role="tab" aria-selected="false">Diccionario</button>
+        <button id="tab-btn-charts" data-tab="charts" role="tab" aria-selected="false">Gráficos</button>
+        <button id="tab-btn-audit" data-tab="audit" role="tab" aria-selected="false">Auditor</button>
+      </div>
+      <button class="icon-btn" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro"><svg id="theme-icon"><use href="#i-moon"/></svg></button>
+    </div>
+  </div>
+</header>
+
+<main>
+  <section id="panel-wizard" class="tabpanel" role="tabpanel">
+    <div class="wizard-shell">
+      <div class="breadcrumb" id="breadcrumb"></div>
+      <div id="wizard-stage"></div>
+    </div>
+  </section>
+
+  <section id="panel-dict" class="tabpanel" role="tabpanel" hidden>
+    <div class="subnav" id="dict-subnav"></div>
+    <div id="dict-section-a">
+      <div class="toolbar">
+        <div class="search-wrap"><svg><use href="#i-search"/></svg><input class="search-input" id="dict-search" type="search" placeholder="Buscar por nombre, uso o supuesto…" aria-label="Buscar prueba estadística" /></div>
+        <div class="chip-row" id="dict-filters"></div>
+      </div>
+      <div class="card-grid" id="dict-grid"></div>
+      <div class="empty-state" id="dict-empty" hidden><svg><use href="#i-empty"/></svg><p>No se encontraron pruebas para tu búsqueda.</p></div>
+    </div>
+    <div id="dict-section-b" hidden></div>
+    <div id="dict-section-c" hidden>
+      <div class="chip-row" id="diag-filters" style="margin-bottom:1.5rem;"></div>
+      <div class="card-grid" id="diag-grid"></div>
+    </div>
+    <div id="dict-section-d" hidden><div class="card-grid" id="transform-grid"></div></div>
+  </section>
+
+  <section id="panel-charts" class="tabpanel" role="tabpanel" hidden>
+    <div class="chip-row" id="chart-filters" style="margin-bottom:1.5rem;"></div>
+    <div class="card-grid" id="chart-grid"></div>
+  </section>
+
+  <section id="panel-audit" class="tabpanel" role="tabpanel" hidden>
+    <div class="wizard-shell" style="max-width:640px;" id="audit-shell"></div>
+  </section>
+</main>
+
+<footer class="app-footer">Referencia rápida con fines educativos — verifica siempre los supuestos con tus propios datos antes de reportar resultados.</footer>
+
+<button type="button" class="fab-suggest" id="suggest-open"><svg><use href="#i-mail"/></svg><span>Sugerencias</span></button>
+<div class="modal-overlay" id="suggest-modal" hidden>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="suggest-title">
+    <button type="button" class="icon-btn modal-close" id="suggest-close" aria-label="Cerrar"><svg><use href="#i-x"/></svg></button>
+    <h2 id="suggest-title">Buzón de sugerencias</h2>
+    <p class="q-help">Cuéntanos qué mejorarías, qué prueba echas en falta o qué no ha quedado claro. Al pulsar "Enviar por correo" se abrirá tu programa de correo con el mensaje ya redactado.</p>
+    <textarea id="suggest-text" class="suggest-textarea" maxlength="1500" placeholder="Escribe aquí tu sugerencia…"></textarea>
+    <div class="char-count"><span id="suggest-count">0</span>/1500</div>
+    <div class="result-actions">
+      <button type="button" class="btn btn-primary" id="suggest-send"><svg><use href="#i-mail"/></svg>Enviar por correo</button>
+      <button type="button" class="btn btn-ghost" id="suggest-cancel">Cancelar</button>
+    </div>
+    <p class="suggest-note">Al ser un archivo local, esta página no puede enviar correos por sí sola: el botón prepara el mensaje, dirigido a pramezcua@gmail.com, en tu propio programa de correo — la última pulsación de "enviar" la das tú.</p>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, function(c){ return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
+  function badge(cat, text){ return '<span class="badge badge-'+cat+'">'+escapeHtml(text)+'</span>'; }
+  function frac(num, den){ return '<span class="frac"><span class="num">'+num+'</span><span class="den">'+den+'</span></span>'; }
+  function sqrt(inner){ return '<span class="sqrt"><span class="rad">'+inner+'</span></span>'; }
+
+  /* ============================================================
+     1. BASE DE DATOS DE PRUEBAS Y MODELOS (Diccionario · Sección A)
+  ============================================================ */
+  var TESTS = [
+    { id:"t_una", name:"t de Student de una muestra", category:"parametrica", paradigm:"Paramétrica",
+      def:"Prueba paramétrica que contrasta si la media de una única muestra difiere significativamente de un valor de referencia conocido o hipotético (μ₀).",
+      uses:["Comparar la media de una muestra clínica con un valor normativo poblacional (ej. presión arterial media vs. valor de referencia).","Verificar si el promedio de un proceso de laboratorio se desvía de un estándar conocido."],
+      formula:"t = "+frac("x̄ − μ₀","s / √n"),
+      formulaNote:"x̄: media muestral · μ₀: valor de referencia · s: desviación estándar muestral · n: tamaño de la muestra · gl = n − 1",
+      assumptions:["Variable dependiente cuantitativa continua.","Observaciones independientes entre sí.","La variable sigue una distribución aproximadamente normal (o n ≥ 30 por el TCL)."],
+      related:{id:"wilcoxon_una", label:"Alternativa no paramétrica"} },
+
+    { id:"t_independiente", name:"t de Student para muestras independientes", category:"parametrica", paradigm:"Paramétrica",
+      def:"Prueba paramétrica que compara las medias de una variable cuantitativa entre dos grupos independientes, para determinar si la diferencia observada es estadísticamente significativa.",
+      uses:["Comparar el efecto de un fármaco frente a un placebo en dos grupos distintos de pacientes.","Comparar el rendimiento académico entre dos metodologías de enseñanza aplicadas a grupos diferentes."],
+      formula:"t = "+frac("x̄₁ − x̄₂", sqrt("s²ₚ (1/n₁ + 1/n₂)"))+"&nbsp;&nbsp;&nbsp; s²ₚ = "+frac("(n₁−1)s₁² + (n₂−1)s₂²","n₁ + n₂ − 2"),
+      formulaNote:"x̄₁, x̄₂: medias de cada grupo · s²ₚ: varianza combinada (pooled) · gl = n₁ + n₂ − 2",
+      assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Normalidad de la variable en cada grupo (o tamaño muestral grande).","Homogeneidad de varianzas entre grupos (test de Levene).","Ausencia de outliers extremos."],
+      related:{id:"mann_whitney", label:"Alternativa no paramétrica"} },
+
+    { id:"t_pareada", name:"t de Student para muestras pareadas", category:"parametrica", paradigm:"Paramétrica",
+      def:"Prueba paramétrica que compara las medias de dos mediciones relacionadas (mismos sujetos en dos momentos o condiciones), evaluando si la diferencia promedio es distinta de cero.",
+      uses:["Evaluar el efecto de una intervención midiendo a los mismos sujetos antes y después del tratamiento.","Comparar dos técnicas de medición aplicadas a las mismas muestras biológicas."],
+      formula:"t = "+frac("d̄","s_d / √n"),
+      formulaNote:"d̄: media de las diferencias por pareja · s_d: desviación estándar de las diferencias · gl = n − 1",
+      assumptions:["Variable dependiente cuantitativa.","Mismos sujetos medidos en dos condiciones (diseño pareado).","Las diferencias entre pares siguen una distribución aproximadamente normal.","Los pares son independientes entre sí."],
+      related:{id:"wilcoxon_pareada", label:"Alternativa no paramétrica"} },
+
+    { id:"mann_whitney", name:"U de Mann-Whitney", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Prueba no paramétrica equivalente a la t de Student independiente. Compara las distribuciones (rangos) de dos grupos independientes sin asumir normalidad.",
+      uses:["Comparar escalas de dolor u otras variables ordinales entre dos grupos de tratamiento.","Comparar una variable cuantitativa con muestras pequeñas o muy asimétricas entre dos grupos independientes."],
+      formula:"U₁ = n₁n₂ + "+frac("n₁(n₁+1)","2")+" − R₁",
+      formulaNote:"n₁, n₂: tamaños de cada grupo · R₁: suma de rangos del grupo 1 · U = mín(U₁, U₂)",
+      assumptions:["Variable dependiente al menos ordinal.","Dos grupos independientes.","No requiere normalidad.","Para interpretar el resultado como diferencia de medianas se asume una forma de distribución similar entre grupos."],
+      related:{id:"t_independiente", label:"Versión paramétrica equivalente"} },
+
+    { id:"wilcoxon_una", name:"Wilcoxon de una muestra (rangos con signo)", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Prueba no paramétrica que compara la mediana de una muestra con un valor de referencia, basada en los rangos con signo de las diferencias respecto a ese valor.",
+      uses:["Comparar la mediana de una muestra pequeña y no normal frente a un valor de referencia clínico o técnico."],
+      formula:"W = Σᵢ sign(dᵢ) · Rᵢ",
+      formulaNote:"dᵢ = xᵢ − valor de referencia · Rᵢ: rango de |dᵢ|",
+      assumptions:["Variable al menos ordinal.","Una sola muestra comparada con un valor de referencia.","Se recomienda que la distribución de las diferencias sea simétrica respecto a la mediana."],
+      related:{id:"t_una", label:"Versión paramétrica equivalente"} },
+
+    { id:"wilcoxon_pareada", name:"Wilcoxon de rangos con signo (pareada)", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Prueba no paramétrica equivalente a la t pareada. Compara dos mediciones relacionadas usando los rangos con signo de las diferencias individuales.",
+      uses:["Evaluar cambios antes-después cuando las diferencias no siguen una distribución normal, p. ej. escalas de síntomas pre/post intervención."],
+      formula:"W = Σᵢ sign(dᵢ) · Rᵢ",
+      formulaNote:"dᵢ: diferencia del par i (post − pre) · Rᵢ: rango de |dᵢ|",
+      assumptions:["Variable al menos ordinal, o cuantitativa sin normalidad.","Datos pareados (mismos sujetos en dos condiciones).","Las diferencias son razonablemente simétricas alrededor de la mediana."],
+      related:{id:"t_pareada", label:"Versión paramétrica equivalente"} },
+
+    { id:"anova_1f", name:"ANOVA de un factor (entre grupos)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Análisis de varianza que compara las medias de tres o más grupos independientes mediante la razón entre la variabilidad explicada por el factor y la variabilidad residual.",
+      uses:["Comparar el efecto de tres o más dosis de un fármaco sobre una variable fisiológica.","Comparar medias de rendimiento entre múltiples grupos experimentales independientes."],
+      formula:"F = "+frac("MS_entre","MS_dentro")+" = "+frac("SC_entre /(k−1)","SC_dentro /(N−k)"),
+      formulaNote:"k: número de grupos · N: tamaño muestral total · gl = (k−1, N−k)",
+      assumptions:["Variable dependiente cuantitativa.","Más de dos grupos independientes.","Normalidad de la variable en cada grupo.","Homogeneidad de varianzas entre grupos.","Observaciones independientes."],
+      related:{id:"kruskal_wallis", label:"Alternativa no paramétrica"} },
+
+    { id:"anova_rm", name:"ANOVA de medidas repetidas", category:"parametrica", paradigm:"Paramétrica",
+      def:"Extensión del ANOVA para diseños donde los mismos sujetos se miden en tres o más condiciones o momentos, controlando la variabilidad atribuible a cada sujeto.",
+      uses:["Analizar la evolución de una variable clínica medida en varios momentos (basal, 1 mes, 3 meses) en los mismos pacientes."],
+      formula:"F = "+frac("MS_tratamiento","MS_error"),
+      formulaNote:"MS_error excluye la variabilidad entre sujetos, ya estimada aparte · requiere corrección si falla la esfericidad",
+      assumptions:["Variable dependiente cuantitativa.","Mismos sujetos medidos en ≥ 3 condiciones o momentos.","Normalidad de las diferencias entre condiciones.","Esfericidad (test de Mauchly) o aplicar corrección de Greenhouse-Geisser."],
+      related:{id:"friedman", label:"Alternativa no paramétrica"} },
+
+    { id:"kruskal_wallis", name:"Kruskal-Wallis", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Extensión no paramétrica del ANOVA de un factor. Compara las distribuciones de tres o más grupos independientes usando rangos, sin asumir normalidad.",
+      uses:["Comparar niveles de una variable ordinal (ej. severidad clínica) entre tres o más grupos independientes cuando no hay normalidad."],
+      formula:"H = "+frac("12","N(N+1)")+" Σᵢ "+frac("Rᵢ²","nᵢ")+" − 3(N+1)",
+      formulaNote:"N: tamaño muestral total · nᵢ: tamaño del grupo i · Rᵢ: suma de rangos del grupo i",
+      assumptions:["Variable al menos ordinal.","Más de dos grupos independientes.","No requiere normalidad.","Se asume una forma de distribución similar entre grupos para interpretar diferencias de mediana."],
+      related:{id:"anova_1f", label:"Versión paramétrica equivalente"} },
+
+    { id:"friedman", name:"Friedman", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Extensión no paramétrica del ANOVA de medidas repetidas. Compara tres o más condiciones medidas sobre los mismos sujetos usando rangos.",
+      uses:["Comparar mediciones ordinales repetidas en varios momentos, p. ej. evaluación de un panel de jueces bajo distintas condiciones."],
+      formula:"χ²_F = "+frac("12","N k(k+1)")+" Σⱼ Rⱼ² − 3N(k+1)",
+      formulaNote:"N: número de sujetos · k: número de condiciones · Rⱼ: suma de rangos de la condición j",
+      assumptions:["Variable al menos ordinal.","Mismos sujetos evaluados en ≥ 3 condiciones.","No requiere normalidad ni esfericidad.","Diseño de bloques completos (todos los sujetos pasan por todas las condiciones)."],
+      related:{id:"anova_rm", label:"Versión paramétrica equivalente"} },
+
+    { id:"dunnett", name:"Test de Dunnett", category:"parametrica", paradigm:"Paramétrica (post-hoc)",
+      def:"Procedimiento post-hoc paramétrico que compara varios grupos de tratamiento frente a un único grupo control, ajustando el error Tipo I por comparaciones múltiples con un valor crítico específico.",
+      uses:["Comparar varias dosis de un fármaco frente a un grupo control/placebo, sin necesidad de comparar las dosis entre sí.","Reduce el número de comparaciones necesarias frente a un post-hoc de todas las parejas (Tukey)."],
+      formula:"tᵢ = "+frac("x̄ᵢ − x̄_control", sqrt("MS_error (1/nᵢ + 1/n_control)")),
+      formulaNote:"Se compara contra el valor crítico d_α de la distribución de Dunnett, no contra la t de Student estándar",
+      assumptions:["Variable dependiente cuantitativa.","Tres o más grupos independientes, incluyendo un grupo control claramente definido.","Normalidad de los residuos en cada grupo.","Homogeneidad de varianzas entre grupos."],
+      related:null },
+
+    { id:"anova_2f", name:"ANOVA de dos vías (factorial)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Extensión del ANOVA que evalúa simultáneamente el efecto de dos factores categóricos independientes sobre una variable cuantitativa, así como su posible interacción.",
+      uses:["Evaluar el efecto combinado de un tratamiento y el sexo sobre una variable fisiológica, incluyendo su interacción.","Diseños experimentales con dos factores manipulados simultáneamente (ej. dosis × tiempo de exposición)."],
+      formula:"Y<sub>ijk</sub> = μ + α<sub>i</sub> + β<sub>j</sub> + (αβ)<sub>ij</sub> + ε<sub>ijk</sub>",
+      formulaNote:"α_i, β_j: efectos principales de cada factor · (αβ)_ij: efecto de interacción · se obtiene un estadístico F para cada efecto",
+      assumptions:["Variable dependiente cuantitativa.","Dos o más factores categóricos independientes entre sujetos.","Normalidad de los residuos.","Homogeneidad de varianzas entre las celdas del diseño.","Idealmente, tamaños de celda similares (diseño equilibrado)."],
+      related:{id:"anova_mixto", label:"Si además una de las variables se mide de forma repetida"} },
+
+    { id:"anova_mixto", name:"ANOVA Mixto (grupos × condiciones / split-plot)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Combina en un mismo análisis un factor entre-sujetos (grupos distintos) y un factor intra-sujetos (varias condiciones o momentos medidos en los mismos sujetos), evaluando el efecto de cada uno y su interacción.",
+      uses:["Comparar si el efecto de un tratamiento (grupo experimental vs. control) sobre una variable clínica cambia a lo largo de varias visitas de seguimiento.","Evaluar si la evolución del dolor a lo largo de 3 momentos difiere entre un grupo de fisioterapia y un grupo control."],
+      formula:"Y<sub>ijk</sub> = μ + α<sub>i</sub> + π<sub>j(i)</sub> + β<sub>k</sub> + (αβ)<sub>ik</sub> + ε<sub>ijk</sub>",
+      formulaNote:"α_i: efecto del grupo (entre-sujetos) · π_j(i): sujeto anidado en el grupo · β_k: efecto de la condición repetida (intra-sujetos) · (αβ)_ik: interacción grupo × condición",
+      assumptions:["Variable dependiente cuantitativa.","Un factor entre-sujetos (grupos distintos) y un factor intra-sujetos (mismos sujetos en todas las condiciones).","Normalidad de los residuos.","Homogeneidad de varianzas entre grupos (test de Levene) y de las matrices de covarianza (M de Box).","Esfericidad del factor intra-sujetos (test de Mauchly), o aplicar corrección de Greenhouse-Geisser.","Sin datos faltantes ni estructura anidada adicional (en ese caso, usar un Modelo Mixto)."],
+      related:{id:"mixed_model", label:"Alternativa robusta si hay datos faltantes o anidamiento"} },
+
+    { id:"mixed_model", name:"Modelo Mixto (efectos fijos y aleatorios)", category:"parametrica", paradigm:"Modelo paramétrico avanzado",
+      def:"Modelo de regresión que incluye efectos fijos (comunes a toda la muestra) y efectos aleatorios (específicos de cada sujeto o grupo), adecuado para datos anidados, jerárquicos o medidas repetidas con datos faltantes.",
+      uses:["Analizar medidas repetidas en el tiempo cuando algunos pacientes tienen visitas perdidas.","Modelar datos de pacientes anidados en hospitales o centros, evitando la pseudorreplicación."],
+      formula:"Y<sub>ij</sub> = X<sub>ij</sub>β + Z<sub>ij</sub>u<sub>i</sub> + ε<sub>ij</sub>",
+      formulaNote:"β: efectos fijos · u_i: efectos aleatorios del sujeto/cluster i, con u_i ~ N(0,G) · ε_ij ~ N(0,σ²)",
+      assumptions:["Variable dependiente cuantitativa (o distribución adecuada en su versión generalizada).","Estructura de datos anidada, jerárquica o de medidas repetidas.","Normalidad de los residuos y de los efectos aleatorios.","No requiere esfericidad ni diseño balanceado.","Tolera razonablemente los datos faltantes (bajo el supuesto MAR)."],
+      related:{id:"anova_mixto", label:"Versión clásica sin datos faltantes ni anidamiento"} },
+
+    { id:"chi2", name:"Chi-cuadrado de independencia", category:"asociacion", paradigm:"No paramétrica",
+      def:"Prueba que evalúa si existe asociación estadística entre dos variables categóricas, comparando las frecuencias observadas con las frecuencias esperadas bajo el supuesto de independencia.",
+      uses:["Evaluar si existe asociación entre el sexo y la presencia o ausencia de una enfermedad.","Analizar si la respuesta a un tratamiento (sí/no) está asociada al grupo experimental."],
+      formula:"χ² = Σᵢ "+frac("(Oᵢ − Eᵢ)²","Eᵢ"),
+      formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia",
+      assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Frecuencias esperadas ≥ 5 en al menos el 80% de las celdas.","Si no se cumple, usar el test exacto de Fisher."],
+      related:null },
+
+    { id:"pearson", name:"Correlación de Pearson", category:"asociacion", paradigm:"Paramétrica",
+      def:"Coeficiente que mide la fuerza y dirección de la relación lineal entre dos variables cuantitativas, con valores entre −1 y 1.",
+      uses:["Cuantificar la relación lineal entre el índice de masa corporal y la presión arterial.","Estudiar la correlación entre dos biomarcadores continuos."],
+      formula:"r = "+frac("Σ(xᵢ−x̄)(yᵢ−ȳ)", sqrt("Σ(xᵢ−x̄)² · Σ(yᵢ−ȳ)²")),
+      formulaNote:"x̄, ȳ: medias de cada variable · r ∈ [−1, 1]",
+      assumptions:["Ambas variables cuantitativas.","Relación lineal entre las variables.","Normalidad bivariada (o tamaño muestral grande).","Homocedasticidad y ausencia de outliers influyentes."],
+      related:{id:"spearman", label:"Alternativa no paramétrica"} },
+
+    { id:"spearman", name:"Correlación de Spearman", category:"asociacion", paradigm:"No paramétrica",
+      def:"Coeficiente de correlación basado en rangos que mide la fuerza y dirección de una relación monótona —no necesariamente lineal— entre dos variables.",
+      uses:["Analizar la relación entre variables ordinales, como el nivel educativo y una escala de satisfacción.","Correlacionar variables cuantitativas con outliers o relación no lineal pero monótona."],
+      formula:"ρ = 1 − "+frac("6Σdᵢ²","n(n²−1)"),
+      formulaNote:"dᵢ: diferencia entre los rangos de cada par de observaciones · n: número de pares",
+      assumptions:["Ambas variables al menos ordinales.","Relación monótona (no necesariamente lineal).","No requiere normalidad.","Robusta ante outliers."],
+      related:{id:"pearson", label:"Versión paramétrica equivalente"} },
+
+    { id:"reg_lineal_simple", name:"Regresión lineal simple", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo que describe la relación lineal entre una variable predictora (X) y una variable dependiente cuantitativa (Y), permitiendo predecir Y a partir de X.",
+      uses:["Predecir el gasto energético a partir del peso corporal.","Modelar la relación entre una dosis y la respuesta biológica medida."],
+      formula:"Y = β₀ + β₁X + ε &nbsp;&nbsp;&nbsp; β₁ = "+frac("Σ(xᵢ−x̄)(yᵢ−ȳ)","Σ(xᵢ−x̄)²"),
+      formulaNote:"β₀: intercepto · β₁: pendiente · ε: error aleatorio",
+      assumptions:["Variable dependiente cuantitativa continua.","Relación lineal entre X e Y.","Independencia y homocedasticidad de los residuos.","Normalidad de los residuos."],
+      related:{id:"reg_lineal_multiple", label:"Extensión con más predictores"} },
+
+    { id:"reg_lineal_multiple", name:"Regresión lineal múltiple", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Extensión de la regresión lineal simple que modela una variable dependiente cuantitativa en función de dos o más variables predictoras simultáneamente.",
+      uses:["Predecir el precio de una vivienda a partir de múltiples características.","Modelar una variable clínica continua en función de edad, peso y otros factores simultáneamente."],
+      formula:"Y = β₀ + β₁X₁ + β₂X₂ + ⋯ + β<sub>p</sub>X<sub>p</sub> + ε",
+      formulaNote:"β_p: coeficiente de cada predictor Xₚ, controlando por el resto de variables del modelo",
+      assumptions:["Variable dependiente cuantitativa continua.","Relación lineal entre predictores y variable dependiente.","Independencia y homocedasticidad de los residuos.","Normalidad de los residuos.","Ausencia de multicolinealidad entre predictores (VIF < 10)."],
+      related:{id:"reg_lineal_simple", label:"Versión con un único predictor"} },
+
+    { id:"reg_logistica", name:"Regresión logística", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo de regresión utilizado cuando la variable dependiente es categórica binaria; estima la probabilidad de un evento en función de una o más variables predictoras mediante la función logit.",
+      uses:["Predecir la probabilidad de desarrollar una enfermedad en función de factores de riesgo.","Modelar la probabilidad de éxito de un tratamiento (sí/no) según variables clínicas."],
+      formula:"ln"+frac("p","1−p")+" = β₀ + β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>",
+      formulaNote:"p: probabilidad del evento · p = 1 / (1 + e^−(β₀+β₁X₁+…))",
+      assumptions:["Variable dependiente categórica binaria.","Independencia de las observaciones.","Relación lineal entre los predictores y el logit de la probabilidad.","Ausencia de multicolinealidad.","Tamaño muestral suficiente por predictor (regla práctica ≈10 eventos por variable)."],
+      related:{id:"reg_lineal_multiple", label:"Ver también"} },
+
+    { id:"logrank", name:"Test de Log-Rank (Mantel-Cox)", category:"supervivencia", paradigm:"No paramétrica",
+      def:"Prueba no paramétrica que compara las curvas de supervivencia (tiempo hasta un evento) entre dos o más grupos, contrastando el número de eventos observados frente a los esperados en cada momento.",
+      uses:["Comparar la supervivencia libre de progresión entre dos brazos de un ensayo clínico.","Comparar el tiempo hasta el alta hospitalaria entre grupos de tratamiento."],
+      formula:"χ² = "+frac("(Σₜ(O₁ₜ − E₁ₜ))²","Σₜ Vₜ"),
+      formulaNote:"O₁ₜ, E₁ₜ: eventos observados/esperados en el grupo 1 en el tiempo t · Vₜ: varianza del número de eventos",
+      assumptions:["Variable de resultado: tiempo hasta un evento, con posibles datos censurados.","Riesgos proporcionales entre grupos a lo largo del tiempo.","La censura es independiente del pronóstico (no informativa).","Grupos definidos a priori (variable categórica)."],
+      related:{id:"cox", label:"Extensión con más predictores"} },
+
+    { id:"cox", name:"Regresión de Cox (riesgos proporcionales)", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
+      def:"Modelo de regresión de riesgos proporcionales que estima el efecto de una o más variables predictoras sobre el riesgo instantáneo (hazard) de que ocurra un evento a lo largo del tiempo.",
+      uses:["Estimar el efecto de varios factores de riesgo sobre el tiempo hasta un evento clínico, ajustando por covariables.","Calcular hazard ratios ajustados en un estudio de cohortes."],
+      formula:"h(t | X) = h₀(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
+      formulaNote:"h₀(t): riesgo basal (no especificado) · HR = exp(β): razón de riesgos",
+      assumptions:["Variable de resultado: tiempo hasta un evento, con datos censurados permitidos.","Riesgos proporcionales entre categorías de cada predictor (verificable con residuos de Schoenfeld).","Relación log-lineal entre predictores continuos y el riesgo.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores."],
+      related:{id:"logrank", label:"Versión bivariada simple (una sola variable de agrupación)"} }
+  ];
+  var TESTS_BY_ID = {};
+  TESTS.forEach(function(t){ TESTS_BY_ID[t.id] = t; });
+  var CATEGORY_LABEL = { parametrica:"Paramétricas", no_parametrica:"No paramétricas", asociacion:"Asociación y Correlación", regresion:"Regresión y Predicción", supervivencia:"Supervivencia" };
+
+  /* ============================================================
+     2. ÁRBOL DE DECISIÓN DEL ASISTENTE
+  ============================================================ */
+  var TREE = {
+    q_objetivo:{ type:"question", text:"¿Cuál es el objetivo principal de tu análisis?",
+      options:[
+        {label:"Comparar grupos o condiciones", next:"q_comp_var_tipo"},
+        {label:"Analizar la relación o asociación entre variables", next:"q_asoc_tipo"},
+        {label:"Predecir o modelar un resultado", next:"q_pred_tipo"},
+        {label:"Analizar el tiempo hasta un evento (supervivencia)", next:"q_surv_tipo"}
+      ] },
+
+    q_comp_var_tipo:{ type:"question", text:"¿Qué tipo de variable estás comparando entre los grupos?",
+      options:[
+        {label:"Cuantitativa (numérica: continua o discreta)", next:"q_comp_estructura"},
+        {label:"Cualitativa / categórica (nominal u ordinal)", next:"res_chi2_grupos"}
+      ] },
+
+    q_comp_estructura:{ type:"question", text:"¿Cómo es la estructura de tu comparación?",
+      help:"Un «factor» es cada variable categórica que define los grupos que comparas (ej. tratamiento, sexo). Si tu comparación depende de dos o más factores a la vez (ej. tratamiento Y sexo, o grupo Y momento de medición), o si tus datos están «anidados/jerárquicos» —una unidad dentro de otra, como pacientes dentro de un hospital, o alumnos dentro de una clase—, elige la última opción.",
+      options:[
+        {label:"Un grupo frente a un valor de referencia teórico", next:"q_comp_1_sup"},
+        {label:"Varios grupos frente a un único grupo control", next:"res_dunnett"},
+        {label:"2 grupos entre sí", next:"q_comp_2_diseno"},
+        {label:"Más de 2 grupos, con un solo factor", next:"q_comp_mas_diseno"},
+        {label:"Grupos Y condiciones a la vez (dos o más factores), o datos anidados/jerárquicos", next:"q_comp_factorial"}
+      ] },
+
+    q_comp_1_sup:{ type:"question", text:"¿La variable sigue una distribución normal en la población?",
+      options:[ {label:"Sí, cumple normalidad", next:"res_t_una"}, {label:"No cumple, o lo desconozco", next:"res_wilcoxon_una"} ] },
+
+    q_comp_2_diseno:{ type:"question", text:"¿Cómo se relacionan las dos muestras?",
+      help:"Independientes: sujetos distintos en cada grupo. Pareadas: mismos sujetos medidos dos veces.",
+      options:[ {label:"Independientes", next:"q_comp_2_ind_sup"}, {label:"Pareadas / dependientes", next:"q_comp_2_par_sup"} ] },
+
+    q_comp_2_ind_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad (varianzas homogéneas)?",
+      options:[ {label:"Sí, ambos supuestos se cumplen", next:"res_t_independiente"}, {label:"No, alguno falla o la muestra es pequeña", next:"res_mann_whitney"} ] },
+
+    q_comp_2_par_sup:{ type:"question", text:"¿Las diferencias entre pares siguen una distribución normal?",
+      options:[ {label:"Sí", next:"res_t_pareada"}, {label:"No, o lo desconozco", next:"res_wilcoxon_pareada"} ] },
+
+    q_comp_mas_diseno:{ type:"question", text:"¿Los grupos son independientes o son medidas repetidas en los mismos sujetos?",
+      help:"Independientes: cada sujeto pertenece a un único grupo. Medidas repetidas: los mismos sujetos se miden en todas las condiciones (ej. antes/durante/después).",
+      options:[ {label:"Independientes", next:"q_comp_mas_ind_sup"}, {label:"Medidas repetidas", next:"q_comp_mas_rep_sup"} ] },
+
+    q_comp_mas_ind_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad entre los grupos?",
+      options:[ {label:"Sí", next:"res_anova_1f"}, {label:"No", next:"res_kruskal_wallis"} ] },
+
+    q_comp_mas_rep_sup:{ type:"question", text:"¿Las diferencias entre condiciones siguen una distribución normal?",
+      options:[ {label:"Sí", next:"res_anova_rm"}, {label:"No", next:"res_friedman"} ] },
+
+    q_comp_factorial:{ type:"question", text:"¿Cómo se estructuran los datos?",
+      help:"Diseño factorial cruzado: todos los factores varían entre sujetos distintos — cada sujeto pertenece a una única combinación de niveles (ej. tratamiento A-hombre, tratamiento B-mujer…). Diseño mixto (grupos × condiciones): un factor es entre-sujetos (grupos) y otro es intra-sujetos, es decir, mide varias condiciones o momentos en los mismos sujetos (medidas repetidas). Datos anidados/jerárquicos: las observaciones no son independientes porque están agrupadas dentro de una unidad superior (pacientes dentro de hospitales, alumnos dentro de clases).",
+      options:[
+        {label:"Todos los factores son entre-sujetos, sin repetición ni anidamiento (diseño factorial cruzado)", next:"q_comp_factorial_sup"},
+        {label:"Un factor de grupos Y un factor de condiciones repetidas en los mismos sujetos (diseño mixto), sin datos faltantes ni anidamiento", next:"q_comp_mixto_sup"},
+        {label:"Hay datos anidados/jerárquicos, o datos faltantes en las medidas repetidas", next:"res_mixed_model"}
+      ] },
+
+    q_comp_factorial_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad de los residuos?",
+      options:[ {label:"Sí", next:"res_anova_2f"}, {label:"No, o lo desconozco", next:"res_anova_2f_caution"} ] },
+
+    q_comp_mixto_sup:{ type:"question", text:"¿Se cumplen normalidad de los residuos, homocedasticidad entre grupos y esfericidad del factor repetido?",
+      help:"Esfericidad: las varianzas de las diferencias entre cada par de condiciones repetidas deben ser similares entre sí (se comprueba con el test de Mauchly). Si falla, se corrige con Greenhouse-Geisser en vez de descartar la prueba.",
+      options:[ {label:"Sí, se cumplen (o se corrigen si falla la esfericidad)", next:"res_anova_mixto"}, {label:"No, fallan claramente o lo desconozco", next:"res_anova_mixto_caution"} ] },
+
+    q_asoc_tipo:{ type:"question", text:"¿Qué tipo de variables quieres relacionar?",
+      options:[
+        {label:"Dos variables cuantitativas", next:"q_asoc_cuant_sup"},
+        {label:"Dos variables categóricas", next:"res_chi2_asoc"},
+        {label:"Una cuantitativa y una categórica", next:"res_guidance_mixta"}
+      ] },
+
+    q_asoc_cuant_sup:{ type:"question", text:"¿La relación es lineal y ambas variables siguen una distribución normal?",
+      options:[ {label:"Sí", next:"res_pearson"}, {label:"No, o hay valores atípicos", next:"res_spearman"} ] },
+
+    q_pred_tipo:{ type:"question", text:"¿Qué tipo de variable quieres predecir (variable dependiente)?",
+      options:[ {label:"Cuantitativa continua", next:"q_pred_npred"}, {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"} ] },
+
+    q_pred_npred:{ type:"question", text:"¿Cuántas variables predictoras vas a usar?",
+      options:[ {label:"1 predictor", next:"res_reg_lineal_simple"}, {label:"2 o más predictores", next:"res_reg_lineal_multiple"} ] },
+
+    q_surv_tipo:{ type:"question", text:"¿Qué quieres analizar sobre el tiempo hasta un evento?",
+      options:[ {label:"Comparar curvas de supervivencia entre grupos", next:"res_logrank"}, {label:"Modelar el efecto de varias variables sobre el riesgo", next:"res_cox"} ] },
+
+    res_t_una:{ type:"result", testId:"t_una", justification:"Comparas una única muestra cuantitativa frente a un valor de referencia y tus datos cumplen el supuesto de normalidad, por lo que corresponde la prueba paramétrica t de Student de una muestra.", chart:{id:"boxplot", note:"Boxplot de la muestra con una línea de referencia horizontal en μ₀."} },
+    res_wilcoxon_una:{ type:"result", testId:"wilcoxon_una", justification:"Comparas una única muestra frente a un valor de referencia, pero no se cumple el supuesto de normalidad. La alternativa no paramétrica es la prueba de Wilcoxon de una muestra.", chart:{id:"boxplot", note:"Boxplot con una línea de referencia horizontal en la mediana teórica."} },
+    res_t_independiente:{ type:"result", testId:"t_independiente", justification:"Comparas una variable cuantitativa entre dos grupos independientes y se cumplen normalidad y homocedasticidad, por lo que la t de Student para muestras independientes es la prueba adecuada.", chart:{id:"boxplot", note:"Boxplot o violin plot de ambos grupos con los puntos individuales superpuestos (jitter)."} },
+    res_mann_whitney:{ type:"result", testId:"mann_whitney", justification:"Comparas dos grupos independientes, pero no se cumplen los supuestos de normalidad u homocedasticidad. La alternativa no paramétrica es la U de Mann-Whitney.", chart:{id:"boxplot", note:"Boxplot o violin plot por grupo; al comparar medianas, evita el barplot de medias."} },
+    res_t_pareada:{ type:"result", testId:"t_pareada", justification:"Comparas las mismas unidades en dos momentos o condiciones (diseño pareado) y las diferencias siguen una distribución normal: usa la t de Student para muestras pareadas.", chart:{id:"boxplot", note:"Boxplot de las diferencias por sujeto, o líneas que conecten cada par antes-después."} },
+    res_wilcoxon_pareada:{ type:"result", testId:"wilcoxon_pareada", justification:"Tu diseño es pareado, pero las diferencias no siguen una distribución normal. La alternativa no paramétrica es la prueba de Wilcoxon de rangos con signo.", chart:{id:"boxplot", note:"Boxplot de las diferencias, o gráfico de líneas pareadas antes-después."} },
+    res_anova_1f:{ type:"result", testId:"anova_1f", justification:"Comparas una variable cuantitativa entre más de dos grupos independientes y se cumplen normalidad y homocedasticidad: el ANOVA de un factor es la prueba recomendada.", chart:{id:"violin", note:"Violin plot o boxplot por grupo, señalando con post-hoc (Tukey) qué pares difieren."} },
+    res_kruskal_wallis:{ type:"result", testId:"kruskal_wallis", justification:"Comparas más de dos grupos independientes sin cumplir los supuestos paramétricos. La alternativa no paramétrica es Kruskal-Wallis.", chart:{id:"violin", note:"Violin plot o boxplot por grupo; complementa con post-hoc de Dunn si procede."} },
+    res_anova_rm:{ type:"result", testId:"anova_rm", justification:"Mides la misma variable en más de dos momentos sobre los mismos sujetos y las diferencias cumplen normalidad: usa el ANOVA de medidas repetidas.", chart:{id:"interaction_plot", note:"Perfil de medias por momento/condición con barras de error (IC95%)."} },
+    res_friedman:{ type:"result", testId:"friedman", justification:"Tu diseño tiene medidas repetidas en más de dos condiciones, pero no se cumple normalidad. La alternativa no paramétrica es la prueba de Friedman.", chart:{id:"interaction_plot", note:"Perfil de medianas por condición; conecta las observaciones de cada sujeto si n es pequeño."} },
+    res_chi2_grupos:{ type:"result", testId:"chi2", justification:"Comparas la distribución de una variable categórica entre grupos, lo que equivale a analizar la asociación entre dos variables cualitativas: usa la prueba Chi-cuadrado de independencia.", chart:{id:"barplot_error", note:"Barras agrupadas de frecuencias o proporciones por grupo (sin barras de error, al ser conteos)."} },
+    res_chi2_asoc:{ type:"result", testId:"chi2", justification:"Quieres analizar la asociación entre dos variables categóricas: la prueba Chi-cuadrado de independencia compara las frecuencias observadas frente a las esperadas bajo independencia.", chart:{id:"barplot_error", note:"Barras agrupadas o gráfico de mosaico según el número de categorías."} },
+    res_pearson:{ type:"result", testId:"pearson", justification:"Quieres cuantificar la relación entre dos variables cuantitativas con relación lineal y normalidad: el coeficiente de correlación de Pearson es el adecuado.", chart:{id:"scatter_plot", note:"Diagrama de dispersión con recta de regresión y su intervalo de confianza."} },
+    res_spearman:{ type:"result", testId:"spearman", justification:"Quieres analizar la relación entre variables cuantitativas u ordinales sin asumir normalidad o linealidad estricta: usa el coeficiente de correlación de Spearman.", chart:{id:"scatter_plot", note:"Diagrama de dispersión; considera mostrar también los rangos si hay outliers extremos."} },
+    res_reg_lineal_simple:{ type:"result", testId:"reg_lineal_simple", justification:"Quieres predecir o modelar una variable cuantitativa continua a partir de un único predictor: usa la regresión lineal simple.", chart:{id:"scatter_plot", note:"Dispersión de X vs Y con la recta ajustada, y un gráfico de residuos para validar supuestos."} },
+    res_reg_lineal_multiple:{ type:"result", testId:"reg_lineal_multiple", justification:"Quieres predecir una variable cuantitativa continua a partir de dos o más predictores simultáneamente: usa la regresión lineal múltiple.", chart:{id:"scatter_plot", note:"Gráfico de valores observados vs. predichos, y de residuos vs. valores ajustados."} },
+    res_reg_logistica:{ type:"result", testId:"reg_logistica", justification:"Quieres predecir una variable categórica binaria en función de una o más variables predictoras: usa la regresión logística.", chart:{id:"forest_plot", note:"Forest plot con las odds ratios (exp(β)) y sus IC95% por predictor."} },
+    res_dunnett:{ type:"result", testId:"dunnett", justification:"Quieres comparar varios grupos de tratamiento frente a un único grupo control, no entre sí: el test de Dunnett ajusta el error Tipo I específicamente para ese tipo de comparación.", chart:{id:"boxplot", note:"Boxplot de todos los grupos con una línea de referencia en la media del grupo control."} },
+    res_anova_2f:{ type:"result", testId:"anova_2f", justification:"Comparas grupos definidos por dos o más factores cruzados, sin anidamiento ni medidas repetidas, y se cumplen normalidad y homocedasticidad: usa el ANOVA de dos vías.", chart:{id:"interaction_plot", note:"Imprescindible para visualizar si existe interacción entre ambos factores."} },
+    res_anova_2f_caution:{ type:"guidance", title:"Revisa los supuestos antes de interpretar el ANOVA factorial",
+      text:"El ANOVA factorial no es robusto cuando fallan la normalidad de los residuos o la homocedasticidad, especialmente con celdas de tamaño desigual. Considera transformar la variable (log, Box-Cox), usar un modelo lineal generalizado adecuado, o un modelo mixto si además hay estructura anidada.",
+      links:[ {id:"anova_2f", note:"con transformación de datos"}, {id:"mixed_model", note:"si hay estructura anidada o repetida"} ],
+      chart:{id:"interaction_plot", note:"Sigue siendo útil para explorar los datos mientras decides cómo tratar el incumplimiento de supuestos."} },
+    res_anova_mixto:{ type:"result", testId:"anova_mixto", justification:"Tienes un factor de grupos (entre-sujetos) y un factor de condiciones repetidas en los mismos sujetos, sin datos faltantes ni anidamiento, y se cumplen normalidad, homocedasticidad y esfericidad: usa el ANOVA Mixto (diseño de grupos × condiciones).", chart:{id:"interaction_plot", note:"Imprescindible para visualizar si el efecto del grupo cambia entre condiciones (interacción grupo × condición)."} },
+    res_anova_mixto_caution:{ type:"guidance", title:"El ANOVA Mixto es sensible al incumplimiento de supuestos",
+      text:"Con un diseño de grupos × condiciones, fallar la esfericidad o la homocedasticidad infla el error Tipo I del efecto que más interesa: la interacción. Aplica la corrección de Greenhouse-Geisser si solo falla la esfericidad, o usa directamente un modelo mixto —más robusto y sin necesidad de asumir esfericidad ni varianzas homogéneas.",
+      links:[ {id:"anova_mixto", note:"con corrección de Greenhouse-Geisser"}, {id:"mixed_model", note:"alternativa robusta sin estos supuestos"} ],
+      chart:{id:"interaction_plot", note:"Sigue siendo la visualización clave mientras decides cómo tratar el incumplimiento de supuestos."} },
+    res_mixed_model:{ type:"result", testId:"mixed_model", justification:"Tus datos combinan grupos y condiciones repetidas con estructura anidada/jerárquica o datos faltantes: un modelo mixto de efectos fijos y aleatorios es la herramienta adecuada.", chart:{id:"interaction_plot", note:"Perfil de medias estimadas por el modelo, con las trayectorias individuales de cada sujeto en segundo plano."} },
+    res_logrank:{ type:"result", testId:"logrank", justification:"Quieres comparar la probabilidad de supervivencia (tiempo hasta un evento) entre grupos definidos a priori: usa el test de Log-Rank sobre las curvas de Kaplan-Meier.", chart:{id:"kaplan_meier", note:"Curvas de Kaplan-Meier por grupo con el número de sujetos en riesgo bajo el eje temporal."} },
+    res_cox:{ type:"result", testId:"cox", justification:"Quieres modelar el efecto de una o más variables sobre el riesgo de que ocurra un evento a lo largo del tiempo: usa la regresión de Cox de riesgos proporcionales.", chart:{id:"forest_plot", note:"Forest plot con los hazard ratios (HR) y sus IC95% por variable del modelo."} },
+
+    res_guidance_mixta:{ type:"guidance", title:"No se trata de una correlación clásica",
+      text:"Cuando una variable es categórica y la otra cuantitativa, no se usa un coeficiente de correlación estándar. Si la variable categórica tiene dos niveles, trátalo como una comparación de dos grupos. Si tiene tres o más niveles, trátalo como una comparación de varios grupos.",
+      links:[ {id:"t_independiente", note:"2 niveles + normalidad"}, {id:"mann_whitney", note:"2 niveles sin normalidad"}, {id:"anova_1f", note:"≥3 niveles + normalidad"}, {id:"kruskal_wallis", note:"≥3 niveles sin normalidad"} ],
+      chart:null }
+  };
+
+  /* ============================================================
+     3. DICCIONARIO · SECCIÓN C — DIAGNÓSTICO DE SUPUESTOS Y CORRECCIONES
+  ============================================================ */
+  var DIAGNOSTICS = [
+    { id:"shapiro", name:"Shapiro-Wilk", tipo:"normalidad",
+      proposito:"Test de normalidad más potente para muestras pequeñas y medianas (n < 50, utilizable hasta n ≈ 2000). Es el más recomendado en la práctica habitual.",
+      formula:"W = "+frac("(Σ aᵢ x₍ᵢ₎)²","Σ(xᵢ−x̄)²"),
+      formulaNote:"x₍ᵢ₎: valores ordenados de menor a mayor · aᵢ: coeficientes tabulados",
+      notas:"H₀: la muestra proviene de una población normal. Un p &lt; .05 sugiere desviación de la normalidad. Complementa siempre con un histograma o Q-Q plot." },
+    { id:"ks", name:"Kolmogorov-Smirnov", tipo:"normalidad",
+      proposito:"Compara la función de distribución empírica de la muestra con una distribución teórica (no solo la normal). Menos potente que Shapiro-Wilk para normalidad.",
+      formula:"D = sup<sub>x</sub> |F<sub>n</sub>(x) − F(x)|",
+      formulaNote:"F_n(x): función de distribución empírica · F(x): función de distribución teórica",
+      notas:"En su versión clásica requiere que los parámetros de la distribución teórica se conozcan a priori (usar la corrección de Lilliefors si se estiman de la muestra)." },
+    { id:"dagostino", name:"D'Agostino-Pearson (Omnibus K²)", tipo:"normalidad",
+      proposito:"Evalúa la normalidad combinando la asimetría (skewness) y la curtosis de la muestra en un único estadístico.",
+      formula:"K² = Z<sub>g₁</sub>² + Z<sub>g₂</sub>²",
+      formulaNote:"Z_g1: asimetría estandarizada · Z_g2: curtosis estandarizada",
+      notas:"Útil para detectar específicamente desviaciones por asimetría o colas pesadas; recomendable con muestras moderadas o grandes (n &gt; 20)." },
+    { id:"levene", name:"Test de Levene", tipo:"homocedasticidad",
+      proposito:"Evalúa si dos o más grupos tienen varianzas homogéneas. Es robusto ante desviaciones de la normalidad (usa la mediana por defecto).",
+      formula:"W = "+frac("N−k","k−1")+" · "+frac("Σ nᵢ(Z̄ᵢ−Z̄)²","ΣΣ(Zᵢⱼ−Z̄ᵢ)²"),
+      formulaNote:"Zᵢⱼ = |Yᵢⱼ − medianaᵢ| · se aplica un ANOVA sobre estas desviaciones",
+      notas:"El test estándar para comprobar homocedasticidad antes de una t independiente o un ANOVA. Un p &lt; .05 indica varianzas heterogéneas." },
+    { id:"bartlett", name:"Test de Bartlett", tipo:"homocedasticidad",
+      proposito:"Alternativa a Levene para comparar varianzas entre grupos, más potente si los datos son normales, pero muy sensible a desviaciones de la normalidad.",
+      formula:"χ² = "+frac("(N−k)ln(S²ₚ) − Σ(nᵢ−1)ln(S²ᵢ)","C"),
+      formulaNote:"S²ₚ: varianza combinada (pooled) · C: factor de corrección",
+      notas:"Solo recomendable cuando la normalidad de cada grupo ya está confirmada; en caso contrario, preferir Levene." },
+    { id:"breuschpagan", name:"Test de Breusch-Pagan", tipo:"homocedasticidad",
+      proposito:"Evalúa la homocedasticidad de los residuos en un modelo de regresión (heterocedasticidad condicional a los predictores).",
+      formula:"LM = n · R²<sub>aux</sub> ∼ χ²₍<sub>p</sub>₎",
+      formulaNote:"R²_aux: R² de la regresión auxiliar de los residuos² sobre los predictores del modelo",
+      notas:"Imprescindible al validar los supuestos de una regresión lineal antes de confiar en los errores estándar de los coeficientes." },
+    { id:"welch", name:"Corrección de Welch", tipo:"correccion",
+      proposito:"Ajusta los grados de libertad de la t de Student o el ANOVA cuando falla la homocedasticidad, sin necesidad de asumir varianzas iguales.",
+      formula:"df_Welch = "+frac("(s₁²/n₁ + s₂²/n₂)²","(s₁²/n₁)²/(n₁−1) + (s₂²/n₂)²/(n₂−1)"),
+      formulaNote:"Reduce los grados de libertad efectivos cuando las varianzas y tamaños muestrales difieren mucho entre grupos",
+      notas:"Recomendado por defecto en muchos paquetes estadísticos modernos: aplicarla no perjudica cuando las varianzas sí son homogéneas." },
+    { id:"ggeisser", name:"Greenhouse-Geisser / Huynh-Feldt", tipo:"correccion",
+      proposito:"Corrige los grados de libertad del ANOVA de medidas repetidas cuando no se cumple el supuesto de esfericidad.",
+      formula:"df_corregidos = ε̂ · df",
+      formulaNote:"ε̂: estimador de esfericidad (Greenhouse-Geisser es más conservador; Huynh-Feldt menos, útil cuando ε̂ &gt; .75)",
+      notas:"Se aplica automáticamente en la mayoría del software al detectar que el test de Mauchly resulta significativo (p &lt; .05)." },
+    { id:"bonferroni", name:"Corrección de Bonferroni", tipo:"correccion",
+      proposito:"Ajuste conservador del umbral de significación para controlar el error Tipo I al hacer múltiples comparaciones.",
+      formula:"α_ajustado = "+frac("α","m"),
+      formulaNote:"m: número de comparaciones realizadas",
+      notas:"Muy conservador con muchas comparaciones (pierde potencia). Preferible Holm-Bonferroni o FDR cuando m es grande." },
+    { id:"holm", name:"Holm-Bonferroni", tipo:"correccion",
+      proposito:"Versión secuencial y menos conservadora de Bonferroni: ordena los p-valores y aplica un umbral progresivamente menos estricto.",
+      formula:"p₍ₖ₎ ≤ "+frac("α","m−k+1"),
+      formulaNote:"p₍ₖ₎: p-valor en la posición k tras ordenar de menor a mayor",
+      notas:"Controla el mismo error familywise que Bonferroni, pero con mayor potencia estadística; es casi siempre preferible." },
+    { id:"tukey", name:"Tukey HSD (Honestly Significant Difference)", tipo:"correccion",
+      proposito:"Post-hoc estándar tras un ANOVA significativo, para comparar todas las parejas de grupos controlando el error familywise.",
+      formula:"HSD = q_(α,k,N−k) · "+sqrt("MS_error / n"),
+      formulaNote:"q: valor crítico del rango studentizado · k: número de grupos",
+      notas:"Diseñado específicamente para comparaciones por pares tras un ANOVA equilibrado; más potente que Bonferroni en ese contexto." },
+    { id:"fdr", name:"FDR — Benjamini-Hochberg", tipo:"correccion",
+      proposito:"Controla la tasa de falsos descubrimientos (proporción esperada de falsos positivos entre los resultados significativos), en vez del error familywise estricto.",
+      formula:"p₍ₖ₎ ≤ "+frac("k","m")+" · α",
+      formulaNote:"Se ordenan los p-valores de menor a mayor y se busca el mayor k que cumple la desigualdad",
+      notas:"Estándar en análisis con muchas comparaciones simultáneas (ej. genómica, múltiples biomarcadores); mucho más potente que Bonferroni." }
+  ];
+  var DIAG_LABEL = { normalidad:"Normalidad", homocedasticidad:"Homocedasticidad", correccion:"Correcciones y ajustes" };
+  var DIAG_BADGE_CAT = { normalidad:"parametrica", homocedasticidad:"no_parametrica", correccion:"regresion" };
+
+  /* ============================================================
+     4. DICCIONARIO · SECCIÓN D — TRANSFORMACIONES DE DATOS
+  ============================================================ */
+  var TRANSFORMS = [
+    { id:"log", name:"Transformación logarítmica", formula:"x' = log(x + c)",
+      uso:"Corrige asimetría positiva y estabiliza varianzas que crecen con la media (heterocedasticidad multiplicativa). c es una constante pequeña si existen ceros en los datos." },
+    { id:"sqrt", name:"Transformación raíz cuadrada", formula:"x' = "+sqrt("x + 0.5"),
+      uso:"Adecuada para datos de conteo (distribución de Poisson), donde la varianza es proporcional a la media." },
+    { id:"boxcox", name:"Transformación Box-Cox",
+      formula:'<div class="piecewise"><div>x\'(λ) = '+frac("x<sup>λ</sup> − 1","λ")+'<span class="cond">si λ ≠ 0</span></div><div>x\'(λ) = ln(x) <span class="cond">si λ = 0</span></div></div>',
+      uso:"Familia de transformaciones que estima automáticamente el λ óptimo (por máxima verosimilitud) para acercar los datos a la normalidad. Requiere valores estrictamente positivos." },
+    { id:"zscore", name:"Estandarización Z-score", formula:"z = "+frac("x − x̄","s"),
+      uso:"Centra la variable en media 0 y desviación estándar 1. Imprescindible antes de comparar coeficientes en modelos lineales o entrenar la mayoría de algoritmos de Machine Learning." },
+    { id:"minmax", name:"Escalado Min-Max", formula:"x' = "+frac("x − min(x)","max(x) − min(x)"),
+      uso:"Acota la variable al intervalo [0, 1]. Útil en algoritmos sensibles a la escala (redes neuronales, k-NN) o para comparar variables con unidades distintas." },
+    { id:"rank", name:"Transformación por rangos (Rank Transform)", formula:"x' = rango(x)",
+      uso:"Sustituye cada valor por su posición ordinal en la muestra. Es la base de todas las pruebas no paramétricas (Mann-Whitney, Spearman, Kruskal-Wallis, etc.)." }
+  ];
+
+  /* ============================================================
+     5. DICCIONARIO · SECCIÓN B — TIPOS DE VARIABLE
+  ============================================================ */
+  var VARTYPES = [
+    { id:"nominal", name:"Cualitativa nominal", desc:"Categorías sin orden intrínseco (ej. sexo, grupo sanguíneo, tipo de tratamiento).", tests:"Chi-cuadrado, Fisher exacto, regresión logística (como variable dependiente binaria)." },
+    { id:"ordinal", name:"Cualitativa ordinal", desc:"Categorías con un orden pero sin distancia numérica fija entre ellas (ej. estadio tumoral, escala Likert).", tests:"Mann-Whitney, Kruskal-Wallis, Spearman, Chi-cuadrado, regresión ordinal." },
+    { id:"discreta", name:"Cuantitativa discreta", desc:"Numérica de valores enteros contables (ej. número de hijos, recuento de células, número de recaídas).", tests:"Pruebas paramétricas si se aproxima a la normal; en caso contrario, modelos de Poisson/binomial negativa o transformación raíz cuadrada." },
+    { id:"continua", name:"Cuantitativa continua", desc:"Numérica que puede tomar cualquier valor dentro de un intervalo (ej. presión arterial, concentración plasmática).", tests:"t de Student, ANOVA, Pearson, regresión lineal (si hay normalidad); alternativas no paramétricas en caso contrario." }
+  ];
+  var VARPAIRS = [
+    ["Nominal","Nominal","Chi-cuadrado de independencia (o Fisher exacto si n es pequeño)","Evalúa asociación entre categorías"],
+    ["Nominal (2 grupos)","Continua","t de Student independiente / Mann-Whitney","La nominal define los grupos a comparar"],
+    ["Nominal (≥3 grupos)","Continua","ANOVA de un factor / Kruskal-Wallis","—"],
+    ["Nominal (2 niveles, pareado)","Continua","t pareada / Wilcoxon","Mismos sujetos en ambas condiciones"],
+    ["Ordinal","Ordinal","Correlación de Spearman","Relación monótona basada en rangos"],
+    ["Ordinal","Nominal","Chi-cuadrado / prueba de tendencia (Cochran-Armitage)","—"],
+    ["Continua","Continua","Pearson (relación lineal) / Spearman (relación monótona)","—"],
+    ["Continua / Discreta","Nominal binaria (como VD)","Regresión logística","La continua actúa como predictora"]
+  ];
+
+  /* ============================================================
+     6. CATÁLOGO DE GRÁFICOS (Pestaña 3)
+  ============================================================ */
+  var CHARTS = [
+    { id:"boxplot", name:"Boxplot (diagrama de caja y bigotes)", tag:"comparacion",
+      desc:"Resume la mediana, los cuartiles (rango intercuartílico) y los valores atípicos de una distribución.",
+      cuando:["Comparar la distribución de una variable continua entre 2 o más grupos.","Detectar outliers de forma rápida y visual."],
+      practicas:["Superpón los puntos individuales (jitter) cuando n &lt; 30, para no ocultar la distribución real de los datos.","No uses boxplots para muestras muy pequeñas (n &lt; 5 por grupo) sin mostrar los puntos: la caja puede ser engañosa."] },
+    { id:"violin", name:"Violin Plot", tag:"comparacion",
+      desc:"Combina un boxplot con una estimación de densidad de kernel, mostrando la forma completa de la distribución.",
+      cuando:["Cuando además de comparar medianas/cuartiles quieres ver si la distribución es bimodal o muy asimétrica.","Muestras moderadas o grandes por grupo."],
+      practicas:["Combínalo con un boxplot interno o con los puntos individuales para no perder la información de dispersión exacta.","Con n muy pequeño, la densidad estimada no es fiable — usa un boxplot con puntos en su lugar."] },
+    { id:"barplot_error", name:"Barplot con barras de error (DE / SEM / IC95%)", tag:"comparacion",
+      desc:"Representa medias (o frecuencias) por grupo, con una barra de error que indica dispersión o incertidumbre.",
+      cuando:["Comparar medias entre grupos cuando la variable es aproximadamente normal.","Representar frecuencias o proporciones de una variable categórica entre grupos."],
+      practicas:["Especifica siempre qué representa la barra de error: DE (dispersión de los datos) ≠ SEM (precisión de la media) ≠ IC95%.","Evítalo con datos no normales o con outliers — usa boxplot o violin plot, que no ocultan la forma real de la distribución."] },
+    { id:"scatter_plot", name:"Scatter Plot (diagrama de dispersión)", tag:"asociacion",
+      desc:"Representa cada observación como un punto según los valores de dos variables continuas.",
+      cuando:["Evaluar visualmente la relación entre dos variables cuantitativas.","Visualizar el ajuste de una regresión lineal simple."],
+      practicas:["Añade la línea de tendencia con su intervalo de confianza.","Usa transparencia (alpha) si hay muchos puntos solapados, y revisa visualmente los outliers influyentes."] },
+    { id:"interaction_plot", name:"Interaction Plot (gráfico de interacción)", tag:"comparacion",
+      desc:"Muestra las medias de cada combinación de niveles de dos (o más) factores, o por momento temporal en medidas repetidas.",
+      cuando:["Imprescindible en ANOVA de dos vías y modelos mixtos, para visualizar si existe interacción entre factores.","Perfiles de medidas repetidas a lo largo del tiempo."],
+      practicas:["Incluye barras de error en cada punto.","Evita más de 3–4 líneas simultáneas (se satura visualmente) — usa paneles (facets) si hay muchas condiciones."] },
+    { id:"histogram_qq", name:"Histograma y Gráfico Q-Q", tag:"diagnostico",
+      desc:"El histograma muestra la forma de la distribución; el gráfico Q-Q compara los cuantiles muestrales con los teóricos de una normal.",
+      cuando:["Evaluación visual de la normalidad antes de elegir entre una prueba paramétrica o no paramétrica."],
+      practicas:["Complementa siempre con un test formal (Shapiro-Wilk).","No confíes solo en el histograma con muestras pequeñas — su forma es muy inestable con poca n."] },
+    { id:"heatmap", name:"Heatmap (mapa de calor)", tag:"asociacion",
+      desc:"Representa una matriz de valores (habitualmente correlaciones) mediante una escala de color.",
+      cuando:["Visualizar de un vistazo las correlaciones entre muchas variables cuantitativas."],
+      practicas:["Usa una paleta divergente centrada en 0 (rojo-blanco-azul).","Ordena las variables por clustering jerárquico y marca la significación con asteriscos."] },
+    { id:"forest_plot", name:"Forest Plot", tag:"riesgo",
+      desc:"Representa estimaciones puntuales (odds ratios, hazard ratios, diferencias de medias) con su intervalo de confianza, una por fila.",
+      cuando:["Meta-análisis.","Mostrar los odds ratios de una regresión logística o los hazard ratios de una regresión de Cox."],
+      practicas:["Marca una línea de referencia vertical en 1 (OR/HR) o en 0 (diferencias de medias).","Usa escala logarítmica para OR/HR y ordena las filas por tamaño de efecto."] },
+    { id:"kaplan_meier", name:"Curva de Kaplan-Meier", tag:"riesgo",
+      desc:"Representa la probabilidad de supervivencia (o de estar libre de evento) acumulada a lo largo del tiempo.",
+      cuando:["Visualizar y comparar curvas de supervivencia entre grupos, habitualmente junto a un test de log-rank."],
+      practicas:["Muestra siempre el intervalo de confianza de cada curva.","Indica el número de sujetos en riesgo bajo el eje temporal, y marca las censuras."] }
+  ];
+  var CHART_TAG_LABEL = { comparacion:"Comparación de grupos", asociacion:"Asociación y correlación", diagnostico:"Diagnóstico de supuestos", riesgo:"Regresión y riesgo" };
+  var CHART_TAG_CAT = { comparacion:"parametrica", asociacion:"asociacion", diagnostico:"no_parametrica", riesgo:"regresion" };
+
+  var CHART_SVG = {
+    boxplot:
+      '<line x1="15" y1="115" x2="245" y2="115" class="ci-axis"/>'+
+      '<line x1="55" y1="40" x2="55" y2="60" class="ci-wk"/><line x1="55" y1="88" x2="55" y2="105" class="ci-wk"/>'+
+      '<rect x="38" y="60" width="34" height="28" class="ci-a-soft"/><line x1="38" y1="74" x2="72" y2="74" class="ci-med"/>'+
+      '<circle cx="48" cy="80" r="2.4" class="ci-dot"/><circle cx="63" cy="65" r="2.4" class="ci-dot"/>'+
+      '<line x1="130" y1="22" x2="130" y2="40" class="ci-wk"/><line x1="130" y1="66" x2="130" y2="90" class="ci-wk"/>'+
+      '<rect x="113" y="40" width="34" height="26" class="ci-b-soft"/><line x1="113" y1="50" x2="147" y2="50" class="ci-med"/>'+
+      '<line x1="205" y1="48" x2="205" y2="64" class="ci-wk"/><line x1="205" y1="92" x2="205" y2="108" class="ci-wk"/>'+
+      '<rect x="188" y="64" width="34" height="28" class="ci-a-soft"/><line x1="188" y1="80" x2="222" y2="80" class="ci-med"/>',
+
+    violin:
+      '<path d="M80,20 C60,35 60,60 80,70 C100,60 100,35 80,20 Z M80,70 C55,85 55,100 80,115 C105,100 105,85 80,70 Z" class="ci-a-soft"/>'+
+      '<line x1="68" y1="70" x2="92" y2="70" class="ci-med"/>'+
+      '<path d="M180,20 C155,32 155,52 180,60 C205,52 205,32 180,20 Z M180,60 C150,78 150,100 180,115 C210,100 210,78 180,60 Z" class="ci-b-soft"/>'+
+      '<line x1="168" y1="60" x2="192" y2="60" class="ci-med"/>',
+
+    barplot_error:
+      '<line x1="15" y1="115" x2="245" y2="115" class="ci-axis"/>'+
+      '<rect x="40" y="70" width="34" height="45" class="ci-a-soft"/><line x1="57" y1="58" x2="57" y2="82" class="ci-wk"/><line x1="50" y1="58" x2="64" y2="58" class="ci-wk"/><line x1="50" y1="82" x2="64" y2="82" class="ci-wk"/>'+
+      '<rect x="100" y="50" width="34" height="65" class="ci-b-soft"/><line x1="117" y1="38" x2="117" y2="62" class="ci-wk"/><line x1="110" y1="38" x2="124" y2="38" class="ci-wk"/><line x1="110" y1="62" x2="124" y2="62" class="ci-wk"/>'+
+      '<rect x="160" y="85" width="34" height="30" class="ci-a-soft"/><line x1="177" y1="76" x2="177" y2="94" class="ci-wk"/><line x1="170" y1="76" x2="184" y2="76" class="ci-wk"/><line x1="170" y1="94" x2="184" y2="94" class="ci-wk"/>'+
+      '<rect x="200" y="60" width="34" height="55" class="ci-b-soft"/><line x1="217" y1="48" x2="217" y2="72" class="ci-wk"/><line x1="210" y1="48" x2="224" y2="48" class="ci-wk"/><line x1="210" y1="72" x2="224" y2="72" class="ci-wk"/>',
+
+    scatter_plot:
+      '<line x1="15" y1="115" x2="245" y2="115" class="ci-axis"/><line x1="15" y1="15" x2="15" y2="115" class="ci-axis"/>'+
+      '<line x1="30" y1="100" x2="230" y2="30" class="ci-a"/>'+
+      '<circle cx="40" cy="95" r="3.2" class="ci-a-fill"/><circle cx="60" cy="80" r="3.2" class="ci-a-fill"/><circle cx="75" cy="90" r="3.2" class="ci-a-fill"/>'+
+      '<circle cx="95" cy="70" r="3.2" class="ci-a-fill"/><circle cx="112" cy="76" r="3.2" class="ci-a-fill"/><circle cx="130" cy="58" r="3.2" class="ci-a-fill"/>'+
+      '<circle cx="150" cy="64" r="3.2" class="ci-a-fill"/><circle cx="170" cy="45" r="3.2" class="ci-a-fill"/><circle cx="190" cy="52" r="3.2" class="ci-a-fill"/>'+
+      '<circle cx="210" cy="35" r="3.2" class="ci-a-fill"/><circle cx="222" cy="33" r="3.2" class="ci-a-fill"/>',
+
+    interaction_plot:
+      '<line x1="15" y1="115" x2="245" y2="115" class="ci-axis"/>'+
+      '<polyline points="50,90 140,50 230,70" class="ci-a"/><circle cx="50" cy="90" r="3.6" class="ci-a-fill"/><circle cx="140" cy="50" r="3.6" class="ci-a-fill"/><circle cx="230" cy="70" r="3.6" class="ci-a-fill"/>'+
+      '<polyline points="50,62 140,78 230,25" class="ci-b"/><circle cx="50" cy="62" r="3.6" class="ci-b-fill"/><circle cx="140" cy="78" r="3.6" class="ci-b-fill"/><circle cx="230" cy="25" r="3.6" class="ci-b-fill"/>',
+
+    histogram_qq:
+      '<line x1="12" y1="115" x2="128" y2="115" class="ci-axis"/>'+
+      '<rect x="16" y="100" width="12" height="15" class="ci-a-soft"/><rect x="31" y="80" width="12" height="35" class="ci-a-soft"/><rect x="46" y="55" width="12" height="60" class="ci-a-soft"/>'+
+      '<rect x="61" y="40" width="12" height="75" class="ci-b-soft"/><rect x="76" y="55" width="12" height="60" class="ci-a-soft"/><rect x="91" y="80" width="12" height="35" class="ci-a-soft"/><rect x="106" y="100" width="12" height="15" class="ci-a-soft"/>'+
+      '<line x1="145" y1="110" x2="245" y2="20" class="ci-ref"/>'+
+      '<circle cx="150" cy="106" r="2.6" class="ci-dot"/><circle cx="165" cy="92" r="2.6" class="ci-dot"/><circle cx="180" cy="79" r="2.6" class="ci-dot"/>'+
+      '<circle cx="195" cy="64" r="2.6" class="ci-dot"/><circle cx="210" cy="51" r="2.6" class="ci-dot"/><circle cx="225" cy="37" r="2.6" class="ci-dot"/><circle cx="238" cy="25" r="2.6" class="ci-dot"/>',
+
+    heatmap: (function(){
+      var m = [[1,.7,.3,.1,.5],[.7,1,.4,.2,.6],[.3,.4,1,.8,.2],[.1,.2,.8,1,.3],[.5,.6,.2,.3,1]];
+      var s = ""; var x0=80, y0=12, cell=20;
+      for(var r=0;r<5;r++){ for(var c=0;c<5;c++){
+        s += '<rect x="'+(x0+c*cell)+'" y="'+(y0+r*cell)+'" width="'+(cell-1.5)+'" height="'+(cell-1.5)+'" class="ci-a-fill" fill-opacity="'+m[r][c]+'"/>';
+      } }
+      return s;
+    })(),
+
+    forest_plot:
+      '<line x1="140" y1="15" x2="140" y2="120" class="ci-ref"/>'+
+      '<line x1="100" y1="30" x2="180" y2="30" class="ci-wk"/><rect x="136" y="26" width="8" height="8" class="ci-a-fill"/>'+
+      '<line x1="150" y1="58" x2="210" y2="58" class="ci-wk"/><rect x="174" y="54" width="8" height="8" class="ci-a-fill"/>'+
+      '<line x1="70" y1="86" x2="130" y2="86" class="ci-wk"/><rect x="96" y="82" width="8" height="8" class="ci-a-fill"/>'+
+      '<line x1="120" y1="114" x2="200" y2="114" class="ci-wk"/><rect x="151" y="110" width="8" height="8" class="ci-a-fill"/>',
+
+    kaplan_meier:
+      '<line x1="15" y1="120" x2="245" y2="120" class="ci-axis"/><line x1="15" y1="15" x2="15" y2="120" class="ci-axis"/>'+
+      '<polyline points="20,20 60,20 60,40 100,40 100,55 150,55 150,75 200,75 200,85 240,85" class="ci-a"/>'+
+      '<polyline points="20,20 45,20 45,50 80,50 80,75 120,75 120,95 180,95 180,108 240,108" class="ci-b"/>'+
+      '<line x1="148" y1="50" x2="152" y2="60" class="ci-a"/><line x1="198" y1="80" x2="202" y2="90" class="ci-a"/>'
+  };
+  function chartIllustration(id){
+    return '<svg class="chart-illustration" viewBox="0 0 260 130" aria-hidden="true">'+(CHART_SVG[id]||"")+'</svg>';
+  }
+
+  /* ============================================================
+     7. AUDITOR — REGLAS DE REQUISITOS POR PRUEBA (Pestaña 4)
+  ============================================================ */
+  var VARTYPE_LABEL = { nominal:"Nominal", ordinal:"Ordinal", discreta:"Discreta", continua:"Continua" };
+  var DESIGN_LABEL = { independientes:"Independientes", pareadas:"Pareadas / medidas repetidas", anidados:"Anidados / jerárquicos", na:"No aplica" };
+
+  var REQUIREMENTS = {
+    t_una:{ varTypes:["discreta","continua"], groups:1, design:"na", normality:true, homoscedasticity:false },
+    wilcoxon_una:{ varTypes:["ordinal","discreta","continua"], groups:1, design:"na", normality:false, homoscedasticity:false },
+    t_independiente:{ varTypes:["discreta","continua"], groups:2, design:"independientes", normality:true, homoscedasticity:true, designSwap:{id:"t_pareada", when:"pareadas"} },
+    mann_whitney:{ varTypes:["ordinal","discreta","continua"], groups:2, design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"wilcoxon_pareada", when:"pareadas"} },
+    t_pareada:{ varTypes:["discreta","continua"], groups:2, design:"pareadas", normality:true, homoscedasticity:false, designSwap:{id:"t_independiente", when:"independientes"} },
+    wilcoxon_pareada:{ varTypes:["ordinal","discreta","continua"], groups:2, design:"pareadas", normality:false, homoscedasticity:false, designSwap:{id:"mann_whitney", when:"independientes"} },
+    anova_1f:{ varTypes:["discreta","continua"], groups:"ge3", design:"independientes", normality:true, homoscedasticity:true, designSwap:{id:"anova_rm", when:"pareadas"} },
+    kruskal_wallis:{ varTypes:["ordinal","discreta","continua"], groups:"ge3", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"friedman", when:"pareadas"} },
+    anova_rm:{ varTypes:["discreta","continua"], groups:"ge3", design:"pareadas", normality:true, homoscedasticity:false, sphericity:true, missingAllowed:false, designSwap:{id:"anova_1f", when:"independientes"} },
+    friedman:{ varTypes:["ordinal","discreta","continua"], groups:"ge3", design:"pareadas", normality:false, homoscedasticity:false, missingAllowed:false, designSwap:{id:"kruskal_wallis", when:"independientes"} },
+    dunnett:{ varTypes:["discreta","continua"], groups:"ge3", design:"independientes", normality:true, homoscedasticity:true },
+    anova_2f:{ varTypes:["discreta","continua"], groups:"any", design:"independientes", normality:true, homoscedasticity:true },
+    anova_mixto:{ varTypes:["discreta","continua"], groups:"any", design:"pareadas", normality:true, homoscedasticity:true, sphericity:true, missingAllowed:false, designSwap:{id:"anova_2f", when:"independientes"} },
+    mixed_model:{ varTypes:["discreta","continua"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
+    chi2:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false },
+    pearson:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:false },
+    spearman:{ varTypes:["ordinal","discreta","continua"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    reg_lineal_simple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
+    reg_lineal_multiple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
+    reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false }
+  };
+  var AUDIT_TEST_IDS = Object.keys(REQUIREMENTS);
+
+  function auditTest(testId, a){
+    var req = REQUIREMENTS[testId];
+    var violations = [];
+
+    if(req.varTypes.indexOf(a.varType) === -1){
+      violations.push({sev:"error", title:"Tipo de variable incompatible",
+        detail:"Esta prueba requiere una variable dependiente "+req.varTypes.map(function(v){return VARTYPE_LABEL[v];}).join(" / ")+", pero indicaste que la tuya es "+VARTYPE_LABEL[a.varType]+"."});
+    }
+
+    if(req.groups === 1 && a.groups !== "1"){
+      violations.push({sev:"error", title:"Número de grupos incompatible", detail:"Esta prueba compara una sola muestra frente a un valor de referencia; indicaste "+labelGroups(a.groups)+"."});
+    }
+    if(req.groups === 2 && a.groups !== "2"){
+      violations.push({sev:"error", title:"Número de grupos incompatible", detail:"Esta prueba está diseñada para exactamente 2 grupos; indicaste "+labelGroups(a.groups)+"."});
+    }
+    if(req.groups === "ge3" && a.groups !== "ge3"){
+      violations.push({sev:"error", title:"Número de grupos insuficiente", detail:"Esta prueba requiere 3 o más grupos/condiciones; indicaste "+labelGroups(a.groups)+"."});
+    }
+
+    var swap = null;
+    if(req.design !== "na" && req.design !== "any" && a.design !== "na" && a.design !== req.design){
+      violations.push({sev:"error", title:"Diseño muestral incompatible", detail:"Esta prueba asume un diseño “"+DESIGN_LABEL[req.design]+"”, pero indicaste “"+DESIGN_LABEL[a.design]+"”."});
+      if(req.designSwap && req.designSwap.when === a.design){ swap = req.designSwap.id; }
+    }
+    if(a.design === "anidados" && !req.nested){
+      violations.push({sev:"error", title:"Estructura jerárquica ignorada", detail:"Tus datos están anidados (ej. pacientes dentro de centros), pero este modelo asume observaciones independientes. Esto produce pseudorreplicación: subestima el error estándar e infla artificialmente la significación."});
+      swap = "mixed_model";
+    }
+
+    if(req.normality && a.normal === "no"){
+      violations.push({sev:"error", title:"Supuesto de normalidad incumplido", detail:"Esta prueba paramétrica asume que la variable (o los residuos) sigue una distribución normal; indicaste que no se cumple."});
+    } else if(req.normality && a.normal === "no_se"){
+      violations.push({sev:"warning", title:"Normalidad sin verificar", detail:"No has comprobado la normalidad. Verifícala con Shapiro-Wilk o un gráfico Q-Q antes de confiar en los resultados."});
+    }
+
+    if(req.homoscedasticity && a.homosced === "no"){
+      violations.push({sev:"error", title:"Varianzas heterogéneas", detail:"Esta prueba asume homocedasticidad; indicaste que las varianzas no son homogéneas. Considera la corrección de Welch."});
+    } else if(req.homoscedasticity && a.homosced === "no_se"){
+      violations.push({sev:"warning", title:"Homocedasticidad sin verificar", detail:"Compruébala con el test de Levene antes de interpretar los resultados."});
+    }
+
+    if(req.sphericity && a.design === "pareadas" && a.groups === "ge3"){
+      if(a.sphericity === "no"){ violations.push({sev:"error", title:"Esfericidad incumplida", detail:"Sin corrección, el estadístico F se infla y aumenta el riesgo de error Tipo I. Aplica la corrección de Greenhouse-Geisser o usa un modelo mixto."}); }
+      else if(a.sphericity === "no_se"){ violations.push({sev:"warning", title:"Esfericidad sin verificar", detail:"Compruébala con el test de Mauchly."}); }
+    }
+
+    if(req.missingAllowed === false && a.design === "pareadas" && a.missingRM === "si"){
+      violations.push({sev:"error", title:"Datos faltantes en medidas repetidas", detail:"Esta prueba requiere un diseño de bloques completos; los sujetos con datos faltantes se eliminan (listwise deletion), perdiendo potencia y sesgando la muestra. Un modelo mixto maneja los datos faltantes de forma más adecuada."});
+      swap = "mixed_model";
+    }
+
+    if(req.normality && a.n && a.n < 30 && a.normal !== "si"){
+      violations.push({sev:"warning", title:"Muestra pequeña sin normalidad confirmada", detail:"Con n = "+a.n+" y sin confirmar normalidad, el Teorema Central del Límite no garantiza la validez de esta prueba paramétrica."});
+    }
+
+    if(!swap){
+      var hardErr = violations.some(function(v){ return v.sev==="error"; });
+      if(hardErr && TESTS_BY_ID[testId].related){ swap = TESTS_BY_ID[testId].related.id; }
+    }
+
+    return { violations:violations, alternativeId: swap };
+  }
+  function labelGroups(g){ return g==="1"?"1 grupo": g==="2"?"2 grupos": g==="ge3"?"3 o más grupos":"que no aplica"; }
+
+  /* ============================================================
+     8. PESTAÑAS PRINCIPALES
+  ============================================================ */
+  var PANELS = ["wizard","dict","charts","audit"];
+  function switchTab(name){
+    PANELS.forEach(function(p){
+      document.getElementById("panel-"+p).hidden = (p !== name);
+      document.getElementById("tab-btn-"+p).setAttribute("aria-selected", p===name ? "true":"false");
+    });
+  }
+  Array.prototype.forEach.call(document.querySelectorAll(".segmented [data-tab]"), function(btn){
+    btn.addEventListener("click", function(){ switchTab(btn.getAttribute("data-tab")); });
+  });
+
+  /* ============================================================
+     9. ASISTENTE — MOTOR DEL CUESTIONARIO
+  ============================================================ */
+  var wizardHistory = [];
+  var wizardCurrent = "q_objetivo";
+  var stageEl = document.getElementById("wizard-stage");
+  var crumbEl = document.getElementById("breadcrumb");
+
+  function renderBreadcrumb(){
+    crumbEl.innerHTML = wizardHistory.map(function(step, i){
+      return '<span class="crumb">'+escapeHtml(step.label)+'</span>'+(i < wizardHistory.length-1 ? '<span class="crumb-sep">›</span>' : '');
+    }).join("");
+  }
+  function optionBtnHtml(opt){
+    return '<button type="button" class="option-btn" data-next="'+opt.next+'" data-label="'+escapeHtml(opt.label)+'"><span>'+escapeHtml(opt.label)+'</span><svg><use href="#i-arrow"/></svg></button>';
+  }
+  function chartBlockHtml(chart){
+    if(!chart) return "";
+    var c = CHARTS.filter(function(x){ return x.id===chart.id; })[0];
+    return '<div class="chart-box"><span class="alt-label">Gráfico recomendado</span>'+
+      '<span class="chart-name">'+(c?escapeHtml(c.name):"")+'</span>'+
+      '<p>'+escapeHtml(chart.note)+'</p>'+
+      (c?'<button type="button" class="text-btn" data-goto-chart="'+chart.id+'" style="color:var(--accent-2);">Ver en Catálogo de Gráficos<svg><use href="#i-arrow"/></svg></button>':'')+
+      '</div>';
+  }
+  function requirementsBlockHtml(test){
+    return '<div class="req-block"><span class="req-title">Requisitos que deben verificarse antes de interpretar</span>'+
+      '<ul class="assump-list">'+test.assumptions.map(function(a){ return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>'; }).join("")+'</ul></div>';
+  }
+
+  function renderWizard(){
+    var node = TREE[wizardCurrent];
+    renderBreadcrumb();
+
+    if(node.type === "question"){
+      stageEl.innerHTML =
+        '<div class="q-card">'+
+          '<span class="kicker">Paso '+(wizardHistory.length+1)+'</span>'+
+          '<h2>'+escapeHtml(node.text)+'</h2>'+
+          (node.help ? '<p class="q-help">'+escapeHtml(node.help)+'</p>' : '')+
+          '<div class="options">'+node.options.map(optionBtnHtml).join("")+'</div>'+
+        '</div>'+
+        '<div class="wizard-footer">'+
+          '<button class="text-btn" id="wiz-back" type="button" '+(wizardHistory.length===0?'disabled':'')+'><svg><use href="#i-back"/></svg>Paso anterior</button>'+
+          '<button class="text-btn" id="wiz-restart" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
+        '</div>';
+
+      Array.prototype.forEach.call(stageEl.querySelectorAll(".option-btn"), function(btn){
+        btn.addEventListener("click", function(){
+          wizardHistory.push({nodeId: wizardCurrent, label: btn.getAttribute("data-label")});
+          wizardCurrent = btn.getAttribute("data-next");
+          renderWizard();
+          stageEl.scrollIntoView({behavior:"smooth", block:"start"});
+        });
+      });
+
+    } else if(node.type === "result"){
+      var test = TESTS_BY_ID[node.testId];
+      var altHtml = "";
+      if(test.related){
+        var rel = TESTS_BY_ID[test.related.id];
+        altHtml = '<div class="alt-box"><div><span class="alt-label">'+escapeHtml(test.related.label)+'</span><span class="alt-name">'+escapeHtml(rel.name)+'</span></div>'+
+          '<button class="btn btn-ghost btn-sm" type="button" data-goto-test="'+rel.id+'">Ver ficha<svg><use href="#i-arrow"/></svg></button></div>';
+      }
+      stageEl.innerHTML =
+        '<div class="result-card">'+
+          '<span class="result-kicker">Resultado recomendado</span>'+
+          '<h2 class="result-name">'+escapeHtml(test.name)+'</h2>'+
+          '<div class="badge-row">'+badge(test.category, test.paradigm)+badge(test.category, CATEGORY_LABEL[test.category])+'</div>'+
+          '<p class="result-just">'+escapeHtml(node.justification)+'</p>'+
+          altHtml + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
+          '<div class="result-actions">'+
+            '<button class="btn btn-primary" id="wiz-view-detail" type="button">Ver en Diccionario<svg><use href="#i-arrow"/></svg></button>'+
+            '<button class="btn btn-ghost" id="wiz-restart-2" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
+          '</div>'+
+        '</div>'+
+        '<div class="wizard-footer"><button class="text-btn" id="wiz-back" type="button"><svg><use href="#i-back"/></svg>Paso anterior</button><span></span></div>';
+
+      document.getElementById("wiz-view-detail").addEventListener("click", function(){ goToDictionary(test.id); });
+      document.getElementById("wiz-restart-2").addEventListener("click", restartWizard);
+      var gotoBtn = stageEl.querySelector("[data-goto-test]");
+      if(gotoBtn){ gotoBtn.addEventListener("click", function(){ goToDictionary(gotoBtn.getAttribute("data-goto-test")); }); }
+      var chartBtn = stageEl.querySelector("[data-goto-chart]");
+      if(chartBtn){ chartBtn.addEventListener("click", function(){ goToChart(chartBtn.getAttribute("data-goto-chart")); }); }
+
+    } else if(node.type === "guidance"){
+      var linksHtml = node.links.map(function(l){
+        var t = TESTS_BY_ID[l.id];
+        return '<button type="button" class="guidance-link" data-goto-test="'+l.id+'"><span>'+escapeHtml(t.name)+' <span class="note">— '+escapeHtml(l.note)+'</span></span><svg><use href="#i-arrow"/></svg></button>';
+      }).join("");
+      stageEl.innerHTML =
+        '<div class="result-card">'+
+          '<span class="result-kicker">Sugerencia</span>'+
+          '<h2 class="result-name">'+escapeHtml(node.title)+'</h2>'+
+          '<p class="result-just">'+escapeHtml(node.text)+'</p>'+
+          '<div class="guidance-list">'+linksHtml+'</div>'+
+          chartBlockHtml(node.chart)+
+          '<div class="result-actions"><button class="btn btn-ghost" id="wiz-restart-2" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button></div>'+
+        '</div>'+
+        '<div class="wizard-footer"><button class="text-btn" id="wiz-back" type="button"><svg><use href="#i-back"/></svg>Paso anterior</button><span></span></div>';
+      document.getElementById("wiz-restart-2").addEventListener("click", restartWizard);
+      Array.prototype.forEach.call(stageEl.querySelectorAll("[data-goto-test]"), function(btn){
+        btn.addEventListener("click", function(){ goToDictionary(btn.getAttribute("data-goto-test")); });
+      });
+      var chartBtn2 = stageEl.querySelector("[data-goto-chart]");
+      if(chartBtn2){ chartBtn2.addEventListener("click", function(){ goToChart(chartBtn2.getAttribute("data-goto-chart")); }); }
+    }
+
+    var backBtn = document.getElementById("wiz-back");
+    if(backBtn){ backBtn.addEventListener("click", function(){ if(!wizardHistory.length) return; wizardCurrent = wizardHistory.pop().nodeId; renderWizard(); }); }
+    var restartBtn = document.getElementById("wiz-restart");
+    if(restartBtn){ restartBtn.addEventListener("click", restartWizard); }
+  }
+  function restartWizard(){ wizardHistory=[]; wizardCurrent="q_objetivo"; renderWizard(); stageEl.scrollIntoView({behavior:"smooth", block:"start"}); }
+
+  /* ============================================================
+     10. DICCIONARIO — SUB-NAVEGACIÓN (A/B/C/D)
+  ============================================================ */
+  var DICT_SECTIONS = [
+    {id:"a", label:"Modelos y Herramientas"}, {id:"b", label:"Tipos de Variable"},
+    {id:"c", label:"Diagnóstico y Correcciones"}, {id:"d", label:"Transformaciones"}
+  ];
+  var dictSection = "a";
+  function renderDictSubnav(){
+    document.getElementById("dict-subnav").innerHTML = DICT_SECTIONS.map(function(s){
+      return '<button type="button" data-dsec="'+s.id+'" aria-pressed="'+(s.id===dictSection)+'">'+s.label+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(document.querySelectorAll("[data-dsec]"), function(btn){
+      btn.addEventListener("click", function(){ switchDictSection(btn.getAttribute("data-dsec")); });
+    });
+  }
+  function switchDictSection(id){
+    dictSection = id;
+    ["a","b","c","d"].forEach(function(s){ document.getElementById("dict-section-"+s).hidden = (s!==id); });
+    renderDictSubnav();
+    if(id==="b" && !document.getElementById("dict-section-b").dataset.built){ renderVarTypesSection(); document.getElementById("dict-section-b").dataset.built="1"; }
+    if(id==="d" && !document.getElementById("dict-section-d").dataset.built){ renderTransforms(); document.getElementById("dict-section-d").dataset.built="1"; }
+  }
+
+  /* ---- Sección A: Modelos y Herramientas ---- */
+  var dictGrid = document.getElementById("dict-grid");
+  var dictEmpty = document.getElementById("dict-empty");
+  var dictSearch = document.getElementById("dict-search");
+  var dictFilters = document.getElementById("dict-filters");
+  var testOpen = {};
+  var testFilter = "all";
+  var TEST_FILTERS = [{id:"all",label:"Todas"},{id:"parametrica",label:"Paramétricas"},{id:"no_parametrica",label:"No paramétricas"},{id:"asociacion",label:"Asociación y Correlación"},{id:"regresion",label:"Regresión y Predicción"},{id:"supervivencia",label:"Supervivencia"}];
+
+  function renderTestFilters(){
+    dictFilters.innerHTML = TEST_FILTERS.map(function(f){
+      var count = f.id==="all" ? TESTS.length : TESTS.filter(function(t){return t.category===f.id;}).length;
+      return '<button type="button" class="chip" data-filter="'+f.id+'" aria-pressed="'+(testFilter===f.id)+'">'+f.label+' <span class="count">'+count+'</span></button>';
+    }).join("");
+    Array.prototype.forEach.call(dictFilters.querySelectorAll("[data-filter]"), function(btn){
+      btn.addEventListener("click", function(){ testFilter = btn.getAttribute("data-filter"); renderTestFilters(); renderDictionary(); });
+    });
+  }
+
+  function testCardBody(test){
+    var relatedHtml = "";
+    if(test.related){
+      var rel = TESTS_BY_ID[test.related.id];
+      relatedHtml = '<div class="related-row"><button type="button" class="related-btn" data-goto-test="'+rel.id+'">'+escapeHtml(test.related.label)+': '+escapeHtml(rel.name)+'<svg><use href="#i-arrow"/></svg></button></div>';
+    }
+    return '<h4>Definición</h4><p>'+escapeHtml(test.def)+'</p>'+
+      '<h4>¿Para qué sirve?</h4><ul class="uses-list">'+test.uses.map(function(u){return '<li>'+escapeHtml(u)+'</li>';}).join("")+'</ul>'+
+      '<h4>Fórmula</h4><div class="formula-box">'+test.formula+'</div><p class="formula-note">'+escapeHtml(test.formulaNote)+'</p>'+
+      '<h4>Requisitos / supuestos previos</h4><ul class="assump-list">'+test.assumptions.map(function(a){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>';}).join("")+'</ul>'+
+      relatedHtml;
+  }
+  function matchesSearch(hayFields, q){ if(!q) return true; q=q.toLowerCase(); return hayFields.join(" ").toLowerCase().indexOf(q)!==-1; }
+
+  function renderDictionary(){
+    var q = dictSearch.value.trim();
+    var list = TESTS.filter(function(t){
+      var catOk = testFilter==="all" || t.category===testFilter;
+      return catOk && matchesSearch([t.name,t.def,t.uses.join(" "),t.assumptions.join(" ")], q);
+    });
+    dictEmpty.hidden = list.length!==0;
+    dictGrid.innerHTML = list.map(function(test){
+      var open = !!testOpen[test.id];
+      return '<article id="card-'+test.id+'" class="xcard" data-open="'+open+'">'+
+        '<button type="button" class="xcard-head" data-id="'+test.id+'">'+
+          '<div class="xcard-top"><h3>'+escapeHtml(test.name)+'</h3><svg><use href="#i-chevron"/></svg></div>'+
+          '<div class="badges-sm">'+badge(test.category, test.paradigm)+'</div>'+
+          '<p class="xcard-def">'+escapeHtml(test.def)+'</p>'+
+        '</button>'+
+        '<div class="xcard-body">'+testCardBody(test)+'</div>'+
+      '</article>';
+    }).join("");
+  }
+  dictGrid.addEventListener("click", function(e){
+    var head = e.target.closest(".xcard-head");
+    if(head){ var id=head.getAttribute("data-id"); testOpen[id]=!testOpen[id]; renderDictionary(); return; }
+    var rel = e.target.closest("[data-goto-test]");
+    if(rel){ e.stopPropagation(); openTestEntry(rel.getAttribute("data-goto-test"), true); }
+  });
+  dictSearch.addEventListener("input", renderDictionary);
+
+  function openTestEntry(testId, scroll){
+    switchDictSection("a");
+    testFilter = "all"; renderTestFilters(); dictSearch.value=""; renderDictionary();
+    Object.keys(testOpen).forEach(function(k){ testOpen[k]=false; });
+    testOpen[testId] = true;
+    renderDictionary();
+    var card = document.getElementById("card-"+testId);
+    if(card){
+      if(scroll) card.scrollIntoView({behavior:"smooth", block:"center"});
+      card.classList.add("highlight");
+      setTimeout(function(){ card.classList.remove("highlight"); }, 2200);
+    }
+  }
+  function goToDictionary(testId){ switchTab("dict"); openTestEntry(testId, true); }
+
+  /* ---- Sección B: Tipos de Variable ---- */
+  function renderVarTypesSection(){
+    var el = document.getElementById("dict-section-b");
+    var cardsHtml = VARTYPES.map(function(v){
+      return '<div class="vartype-card"><h3>'+v.name+'</h3><p class="vdesc">'+v.desc+'</p>'+
+        '<span class="vlabel">Pruebas típicas</span><p class="vtests">'+v.tests+'</p></div>';
+    }).join("");
+    var rowsHtml = VARPAIRS.map(function(p){
+      return '<tr><td>'+p[0]+'</td><td>'+p[1]+'</td><td class="strong">'+p[2]+'</td><td class="muted">'+p[3]+'</td></tr>';
+    }).join("");
+    el.innerHTML = '<div class="vartype-grid">'+cardsHtml+'</div>'+
+      '<h3 class="section-title">Compatibilidad entre pares de variables</h3>'+
+      '<div class="table-wrap"><table class="vartable"><thead><tr><th>Variable 1</th><th>Variable 2</th><th>Prueba recomendada</th><th>Nota</th></tr></thead><tbody>'+rowsHtml+'</tbody></table></div>';
+  }
+
+  /* ---- Sección C: Diagnóstico y Correcciones ---- */
+  var diagGrid = document.getElementById("diag-grid");
+  var diagFiltersEl = document.getElementById("diag-filters");
+  var diagOpen = {}; var diagFilter = "all";
+  var DIAG_FILTERS = [{id:"all",label:"Todas"},{id:"normalidad",label:"Normalidad"},{id:"homocedasticidad",label:"Homocedasticidad"},{id:"correccion",label:"Correcciones y ajustes"}];
+  function renderDiagFilters(){
+    diagFiltersEl.innerHTML = DIAG_FILTERS.map(function(f){
+      return '<button type="button" class="chip" data-dfilter="'+f.id+'" aria-pressed="'+(diagFilter===f.id)+'">'+f.label+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(diagFiltersEl.querySelectorAll("[data-dfilter]"), function(btn){
+      btn.addEventListener("click", function(){ diagFilter = btn.getAttribute("data-dfilter"); renderDiagFilters(); renderDiagnostics(); });
+    });
+  }
+  function renderDiagnostics(){
+    var list = DIAGNOSTICS.filter(function(d){ return diagFilter==="all" || d.tipo===diagFilter; });
+    diagGrid.innerHTML = list.map(function(d){
+      var open = !!diagOpen[d.id];
+      return '<article id="diag-'+d.id+'" class="xcard" data-open="'+open+'">'+
+        '<button type="button" class="xcard-head" data-id="'+d.id+'">'+
+          '<div class="xcard-top"><h3>'+d.name+'</h3><svg><use href="#i-chevron"/></svg></div>'+
+          '<div class="badges-sm">'+badge(DIAG_BADGE_CAT[d.tipo], DIAG_LABEL[d.tipo])+'</div>'+
+          '<p class="xcard-def">'+d.proposito+'</p>'+
+        '</button>'+
+        '<div class="xcard-body"><div class="formula-box">'+d.formula+'</div><p class="formula-note">'+d.formulaNote+'</p><h4>Interpretación</h4><p>'+d.notas+'</p></div>'+
+      '</article>';
+    }).join("");
+  }
+  diagGrid.addEventListener("click", function(e){
+    var head = e.target.closest(".xcard-head");
+    if(head){ var id=head.getAttribute("data-id"); diagOpen[id]=!diagOpen[id]; renderDiagnostics(); }
+  });
+
+  /* ---- Sección D: Transformaciones ---- */
+  function renderTransforms(){
+    var el = document.getElementById("transform-grid");
+    el.innerHTML = TRANSFORMS.map(function(t){
+      return '<div class="transform-card"><h3>'+t.name+'</h3><div class="formula-box">'+t.formula+'</div>'+
+        '<p class="use"><b>Uso principal: </b>'+t.uso+'</p></div>';
+    }).join("");
+  }
+
+  /* ============================================================
+     11. CATÁLOGO DE GRÁFICOS (Pestaña 3)
+  ============================================================ */
+  var chartGrid = document.getElementById("chart-grid");
+  var chartFiltersEl = document.getElementById("chart-filters");
+  var chartOpen = {}; var chartFilter = "all";
+  function renderChartFilters(){
+    var opts = [{id:"all",label:"Todos"}].concat(Object.keys(CHART_TAG_LABEL).map(function(k){return {id:k,label:CHART_TAG_LABEL[k]};}));
+    chartFiltersEl.innerHTML = opts.map(function(f){
+      return '<button type="button" class="chip" data-cfilter="'+f.id+'" aria-pressed="'+(chartFilter===f.id)+'">'+f.label+'</button>';
+    }).join("");
+    Array.prototype.forEach.call(chartFiltersEl.querySelectorAll("[data-cfilter]"), function(btn){
+      btn.addEventListener("click", function(){ chartFilter = btn.getAttribute("data-cfilter"); renderChartFilters(); renderCharts(); });
+    });
+  }
+  function renderCharts(){
+    var list = CHARTS.filter(function(c){ return chartFilter==="all" || c.tag===chartFilter; });
+    chartGrid.innerHTML = list.map(function(c){
+      var open = !!chartOpen[c.id];
+      return '<article id="chart-'+c.id+'" class="xcard" data-open="'+open+'">'+
+        '<button type="button" class="xcard-head" data-id="'+c.id+'">'+
+          chartIllustration(c.id)+
+          '<div class="xcard-top"><h3>'+c.name+'</h3><svg><use href="#i-chevron"/></svg></div>'+
+          '<div class="badges-sm">'+badge(CHART_TAG_CAT[c.tag], CHART_TAG_LABEL[c.tag])+'</div>'+
+          '<p class="xcard-def">'+c.desc+'</p>'+
+        '</button>'+
+        '<div class="xcard-body">'+
+          '<h4>Cuándo usarlo</h4><ul class="uses-list">'+c.cuando.map(function(u){return '<li>'+u+'</li>';}).join("")+'</ul>'+
+          '<h4>Buenas prácticas científicas</h4><ul class="assump-list">'+c.practicas.map(function(p){return '<li><svg><use href="#i-check"/></svg><span>'+p+'</span></li>';}).join("")+'</ul>'+
+        '</div></article>';
+    }).join("");
+  }
+  chartGrid.addEventListener("click", function(e){
+    var head = e.target.closest(".xcard-head");
+    if(head){ var id=head.getAttribute("data-id"); chartOpen[id]=!chartOpen[id]; renderCharts(); }
+  });
+  function goToChart(chartId){
+    switchTab("charts");
+    Object.keys(chartOpen).forEach(function(k){ chartOpen[k]=false; });
+    chartOpen[chartId] = true;
+    renderCharts();
+    var card = document.getElementById("chart-"+chartId);
+    if(card){
+      card.scrollIntoView({behavior:"smooth", block:"center"});
+      card.classList.add("highlight");
+      setTimeout(function(){ card.classList.remove("highlight"); }, 2200);
+    }
+  }
+
+  /* ============================================================
+     12. AUDITOR / EVALUADOR DE MODELOS (Pestaña 4)
+  ============================================================ */
+  var auditAnswers = { testId:"anova_1f", varType:"continua", groups:"ge3", design:"independientes", normal:"si", homosced:"si", sphericity:"si", missingRM:"no", n:"" };
+  var auditResult = null;
+
+  var CHIP_GROUPS = {
+    varType:[{v:"nominal",l:"Nominal"},{v:"ordinal",l:"Ordinal"},{v:"discreta",l:"Discreta"},{v:"continua",l:"Continua"}],
+    groups:[{v:"1",l:"1 grupo"},{v:"2",l:"2 grupos"},{v:"ge3",l:"3 o más"},{v:"na",l:"No aplica"}],
+    design:[{v:"independientes",l:"Independientes"},{v:"pareadas",l:"Pareadas / repetidas"},{v:"anidados",l:"Anidados / jerárquicos"},{v:"na",l:"No aplica"}],
+    normal:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
+    homosced:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
+    sphericity:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
+    missingRM:[{v:"no",l:"No"},{v:"si",l:"Sí"}]
+  };
+  function chipGroupHtml(field, label){
+    return '<div class="field-group"><label class="field-label">'+label+'</label><div class="chip-field">'+CHIP_GROUPS[field].map(function(o){
+      return '<button type="button" data-field="'+field+'" data-value="'+o.v+'" aria-pressed="'+(auditAnswers[field]===o.v)+'">'+o.l+'</button>';
+    }).join("")+'</div></div>';
+  }
+
+  function consequenceText(errors){
+    if(!errors.length) return null;
+    var text = errors.map(function(e){return e.title;}).join(" ");
+    var msgs = [];
+    if(/normalidad|pequeña/i.test(text)) msgs.push("Los p-valores y los intervalos de confianza dejan de ser fiables, aumentando el riesgo de errores Tipo I y Tipo II.");
+    if(/[Vv]arianzas/i.test(text)) msgs.push("Los errores estándar quedan mal estimados, distorsionando el estadístico de contraste y el p-valor.");
+    if(/muestral incompatible|jerárquica/i.test(text)) msgs.push("Ignorar la dependencia entre observaciones infla artificialmente los grados de libertad efectivos y dispara el riesgo de falsos positivos (pseudorreplicación).");
+    if(/[Ee]sfericidad/i.test(text)) msgs.push("El estadístico F se infla, aumentando el riesgo de declarar significativo un efecto que no lo es.");
+    if(/faltantes/i.test(text)) msgs.push("La eliminación de sujetos con datos incompletos reduce la potencia estadística y puede sesgar la muestra si los datos no faltan completamente al azar (MCAR).");
+    if(/variable incompatible|grupos incompatible|grupos insuficiente/i.test(text)) msgs.push("El resultado carece de interpretación estadística válida: las medias y varianzas no tienen sentido en escalas que no lo permiten, o el diseño no coincide con lo que la prueba fue construida para analizar.");
+    if(!msgs.length) msgs.push("El resultado obtenido puede no ser válido ni reproducible.");
+    return msgs.join(" ");
+  }
+
+  function renderAuditor(){
+    var shell = document.getElementById("audit-shell");
+    var testOptions = AUDIT_TEST_IDS.map(function(id){
+      return '<option value="'+id+'" '+(auditAnswers.testId===id?"selected":"")+'>'+TESTS_BY_ID[id].name+'</option>';
+    }).join("");
+
+    var formHtml =
+      '<div class="q-card">'+
+        '<span class="kicker" style="color:var(--cat-supervivencia);">¿Por qué NO puedo usar este modelo?</span>'+
+        '<h2>Auditor de modelos estadísticos</h2>'+
+        '<p class="audit-intro">Selecciona el modelo que quieres usar y describe las características reales de tus datos. Detectaremos violaciones metodológicas antes de que lleguen a tu publicación.</p>'+
+        '<div class="field-group"><label class="field-label">Modelo que deseas usar</label>'+
+        '<select id="audit-test-select" class="select-input">'+testOptions+'</select></div>'+
+        chipGroupHtml("varType","Tipo de tu variable dependiente")+
+        chipGroupHtml("groups","Número de grupos o condiciones que comparas")+
+        chipGroupHtml("design","Diseño muestral")+
+        '<div class="field-group"><label class="field-label">Tamaño muestral aproximado (n) <span class="opt">— opcional</span></label>'+
+        '<input id="audit-n" type="number" min="0" placeholder="ej. 24" value="'+escapeHtml(auditAnswers.n)+'" class="num-input" /></div>'+
+        chipGroupHtml("normal","¿Tus datos cumplen normalidad?")+
+        chipGroupHtml("homosced","¿Cumplen homocedasticidad (varianzas homogéneas)?")+
+        (auditAnswers.design==="pareadas" ? chipGroupHtml("sphericity","¿Se cumple esfericidad? (solo si comparas ≥3 condiciones repetidas)") : "")+
+        (auditAnswers.design==="pareadas" ? chipGroupHtml("missingRM","¿Tienes datos faltantes en las medidas repetidas?") : "")+
+        '<button id="audit-run" type="button" class="btn btn-invalid" style="margin-top:.5rem;">Diagnosticar</button>'+
+      '</div>';
+
+    var resultHtml = "";
+    if(auditResult){
+      var test = TESTS_BY_ID[auditAnswers.testId];
+      var errors = auditResult.violations.filter(function(v){return v.sev==="error";});
+      var warnings = auditResult.violations.filter(function(v){return v.sev==="warning";});
+      var invalid = errors.length>0;
+      var cons = consequenceText(errors);
+      var altTest = auditResult.alternativeId ? TESTS_BY_ID[auditResult.alternativeId] : null;
+
+      resultHtml =
+        '<div class="verdict-card '+(invalid?"is-invalid":"is-valid")+'" style="margin-top:1.5rem;">'+
+          '<div class="verdict-head"><span class="verdict-icon"><svg><use href="#'+(invalid?"i-x":"i-check")+'"/></svg></span>'+
+          '<div><span class="verdict-title">Veredicto para «'+escapeHtml(test.name)+'»</span><span class="verdict-value">'+(invalid?"NO RECOMENDADO / INVÁLIDO":"VÁLIDO")+'</span></div></div>'+
+          (errors.length ? '<div class="violation-list errors"><span class="vl-title">Explicación de las violaciones</span>'+
+            errors.map(function(v){return '<div class="violation-item err"><svg><use href="#i-x"/></svg><span><b>'+escapeHtml(v.title)+'.</b> '+escapeHtml(v.detail)+'</span></div>';}).join("")+'</div>' : '')+
+          (warnings.length ? '<div class="violation-list warnings"><span class="vl-title">Precauciones</span>'+
+            warnings.map(function(v){return '<div class="violation-item warn"><svg><use href="#i-info"/></svg><span><b>'+escapeHtml(v.title)+'.</b> '+escapeHtml(v.detail)+'</span></div>';}).join("")+'</div>' : '')+
+          (!errors.length && !warnings.length ? '<p style="color:var(--text-muted); font-size:.9rem;">No se detectan violaciones metodológicas con la información indicada.</p>' : '')+
+          (cons ? '<div class="consequence-box"><h4>Consecuencias de aplicarlo igualmente</h4><p>'+cons+'</p></div>' : '')+
+          (invalid ? ('<div class="alt-box" style="border-style:solid; background:var(--accent-soft);"><div><span class="alt-label">Solución / alternativa recomendada</span>'+
+            '<span class="alt-name">'+(altTest? escapeHtml(altTest.name) : "Consulta con un bioestadístico para adaptar el diseño al modelo adecuado.")+'</span></div>'+
+            (altTest ? '<button type="button" class="btn btn-primary btn-sm" data-goto-test="'+altTest.id+'">Ver ficha<svg><use href="#i-arrow"/></svg></button>' : '')+
+          '</div>') : '')+
+        '</div>';
+    }
+
+    shell.innerHTML = formHtml + resultHtml;
+  }
+
+  document.getElementById("audit-shell").addEventListener("click", function(e){
+    var chip = e.target.closest("[data-field]");
+    if(chip){ auditAnswers[chip.getAttribute("data-field")] = chip.getAttribute("data-value"); auditResult=null; renderAuditor(); return; }
+    var run = e.target.closest("#audit-run");
+    if(run){ auditResult = auditTest(auditAnswers.testId, auditAnswers); renderAuditor(); document.getElementById("audit-shell").scrollIntoView({behavior:"smooth"}); return; }
+    var rel = e.target.closest("[data-goto-test]");
+    if(rel){ goToDictionary(rel.getAttribute("data-goto-test")); return; }
+  });
+  document.getElementById("audit-shell").addEventListener("change", function(e){
+    if(e.target.id==="audit-test-select"){ auditAnswers.testId = e.target.value; auditResult=null; renderAuditor(); }
+  });
+  document.getElementById("audit-shell").addEventListener("input", function(e){
+    if(e.target.id==="audit-n"){ auditAnswers.n = e.target.value ? parseInt(e.target.value,10) : ""; auditResult=null; }
+  });
+
+  /* ============================================================
+     13. TEMA CLARO / OSCURO
+  ============================================================ */
+  var themeToggle = document.getElementById("theme-toggle");
+  var themeIcon = document.getElementById("theme-icon");
+  var THEME_KEY = "stat-app-theme-v3";
+  function applyTheme(mode){
+    if(mode === "dark" || mode === "light"){ document.documentElement.setAttribute("data-theme", mode); }
+    else { document.documentElement.removeAttribute("data-theme"); }
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var isDark = mode === "dark" || (mode !== "light" && prefersDark);
+    themeIcon.querySelector("use").setAttribute("href", isDark ? "#i-sun" : "#i-moon");
+  }
+  var savedTheme = null;
+  try{ savedTheme = localStorage.getItem(THEME_KEY); }catch(e){}
+  applyTheme(savedTheme);
+  themeToggle.addEventListener("click", function(){
+    var prefersDark = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+    var current = document.documentElement.getAttribute("data-theme") || (prefersDark ? "dark" : "light");
+    var next = current === "dark" ? "light" : "dark";
+    applyTheme(next);
+    try{ localStorage.setItem(THEME_KEY, next); }catch(e){}
+  });
+
+  /* ============================================================
+     14. BUZÓN DE SUGERENCIAS
+  ============================================================ */
+  var suggestOpenBtn = document.getElementById("suggest-open");
+  var suggestModal = document.getElementById("suggest-modal");
+  var suggestClose = document.getElementById("suggest-close");
+  var suggestCancel = document.getElementById("suggest-cancel");
+  var suggestText = document.getElementById("suggest-text");
+  var suggestCount = document.getElementById("suggest-count");
+  var suggestSend = document.getElementById("suggest-send");
+  var SUGGEST_EMAIL = "pramezcua@gmail.com";
+
+  function openSuggestModal(){ suggestModal.hidden = false; suggestText.focus(); }
+  function closeSuggestModal(){ suggestModal.hidden = true; }
+  suggestOpenBtn.addEventListener("click", openSuggestModal);
+  suggestClose.addEventListener("click", closeSuggestModal);
+  suggestCancel.addEventListener("click", closeSuggestModal);
+  suggestModal.addEventListener("click", function(e){ if(e.target === suggestModal) closeSuggestModal(); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !suggestModal.hidden) closeSuggestModal(); });
+  suggestText.addEventListener("input", function(){ suggestCount.textContent = suggestText.value.length; });
+  suggestSend.addEventListener("click", function(){
+    var body = suggestText.value.trim();
+    if(!body){ suggestText.focus(); return; }
+    var subject = "Sugerencia — Selector Estadístico";
+    var mailto = "mailto:"+SUGGEST_EMAIL+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
+    window.location.href = mailto;
+  });
+
+  /* ============================================================
+     15. INICIO
+  ============================================================ */
+  renderWizard();
+  renderDictSubnav();
+  renderTestFilters();
+  renderDictionary();
+  renderDiagFilters();
+  renderDiagnostics();
+  renderChartFilters();
+  renderCharts();
+  renderAuditor();
+
+})();
+</script>
+</body>
+</html>
