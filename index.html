@@ -341,6 +341,7 @@
   <symbol id="i-x" viewBox="0 0 20 20"><path d="M5 5l10 10M15 5L5 15" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></symbol>
   <symbol id="i-info" viewBox="0 0 20 20"><circle cx="10" cy="10" r="7.2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M10 9v5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="10" cy="6.3" r="1" fill="currentColor"/></symbol>
   <symbol id="i-mail" viewBox="0 0 20 20"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M3 5.5l7 5.5 7-5.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></symbol>
+  <symbol id="i-file" viewBox="0 0 20 20"><path d="M5 2.5h7l3 3v12h-10z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M12 2.5v3h3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7 10.5h6M7 13.5h6M7 7.5h2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></symbol>
 </svg>
 
 <header class="app-header">
@@ -418,6 +419,31 @@
       <button type="button" class="btn btn-ghost" id="suggest-cancel">Cancelar</button>
     </div>
     <p class="suggest-note">Al ser un archivo local, esta página no puede enviar correos por sí sola: el botón prepara el mensaje, dirigido a pramezcua@gmail.com, en tu propio programa de correo — la última pulsación de "enviar" la das tú.</p>
+  </div>
+</div>
+
+<div class="modal-overlay" id="plan-modal" hidden>
+  <div class="modal-panel" style="max-width:640px;" role="dialog" aria-modal="true" aria-labelledby="plan-title">
+    <button type="button" class="icon-btn modal-close" id="plan-close" aria-label="Cerrar"><svg><use href="#i-x"/></svg></button>
+    <h2 id="plan-title">Generar plan de análisis</h2>
+    <div id="plan-form-view">
+      <p class="q-help">Completa estos campos para generar un plan de análisis estructurado a partir de la prueba recomendada. El resto de apartados (método, supuestos, tamaño del efecto, código R…) se completan automáticamente.</p>
+      <div class="field-group"><label class="field-label">Pregunta de investigación</label>
+        <textarea id="plan-question" class="suggest-textarea" style="min-height:4rem;" placeholder="ej. ¿Reduce el tratamiento X la variable Y en comparación con placebo?"></textarea></div>
+      <div class="field-group"><label class="field-label">Hipótesis</label>
+        <textarea id="plan-hypothesis" class="suggest-textarea" style="min-height:4rem;" placeholder="ej. El grupo tratamiento presentará un valor medio de Y menor que el grupo control."></textarea></div>
+      <div class="field-group"><label class="field-label">Unidad experimental</label>
+        <input type="text" id="plan-unit" class="num-input" style="width:100%;" value="Paciente" /></div>
+      <button type="button" class="btn btn-primary" id="plan-generate">Generar plan</button>
+    </div>
+    <div id="plan-result-view" hidden>
+      <textarea id="plan-output" class="suggest-textarea" style="min-height:22rem; font-family:var(--font-mono); font-size:.78rem; white-space:pre;" readonly></textarea>
+      <div class="result-actions">
+        <button type="button" class="btn btn-primary" id="plan-copy"><svg><use href="#i-check"/></svg>Copiar</button>
+        <button type="button" class="btn btn-ghost" id="plan-download">Descargar .txt</button>
+        <button type="button" class="btn btn-ghost" id="plan-back"><svg><use href="#i-back"/></svg>Volver a editar</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -818,6 +844,59 @@
   var TESTS_BY_ID = {};
   TESTS.forEach(function(t){ TESTS_BY_ID[t.id] = t; });
   var CATEGORY_LABEL = { parametrica:"Paramétricas", no_parametrica:"No paramétricas", asociacion:"Asociación y Correlación", regresion:"Regresión y Predicción", supervivencia:"Supervivencia" };
+
+  /* ============================================================
+     1B. CÓDIGO REPRODUCIBLE EN R POR PRUEBA
+     Nombres genéricos: resultado, grupo, valor_basal, tiempo, id, centro, evento, tiempo_evento
+  ============================================================ */
+  var RCODE = {
+    t_una: '# t de Student de una muestra\nlibrary(effectsize)\nt.test(datos$resultado, mu = valor_referencia)\ncohens_d(datos$resultado, mu = valor_referencia)\nshapiro.test(datos$resultado)\nhist(datos$resultado); abline(v = valor_referencia, col = "red")',
+    t_welch: '# t de Welch (por defecto: no exige varianzas iguales)\nlibrary(effectsize)\nt.test(resultado ~ grupo, data = datos)       # var.equal = FALSE por defecto\nhedges_g(resultado ~ grupo, data = datos)\nboxplot(resultado ~ grupo, data = datos)',
+    t_independiente: '# t de Student, varianzas combinadas (solo si estan confirmadas como similares)\nlibrary(car); library(effectsize)\nleveneTest(resultado ~ grupo, data = datos)\nt.test(resultado ~ grupo, data = datos, var.equal = TRUE)\ncohens_d(resultado ~ grupo, data = datos)',
+    t_pareada: '# t de Student para muestras pareadas\nlibrary(effectsize)\nt.test(datos$resultado_post, datos$resultado_pre, paired = TRUE)\ndif <- datos$resultado_post - datos$resultado_pre\nshapiro.test(dif)\nrepeated_measures_d(resultado ~ tiempo | id, data = datos_largo)',
+    ancova: '# ANCOVA: resultado_post ~ grupo + valor_basal\nlibrary(car); library(emmeans); library(effectsize)\nmodelo <- lm(resultado_post ~ grupo + valor_basal, data = datos)\nAnova(modelo, type = 3)\nanova(lm(resultado_post ~ grupo * valor_basal, data = datos))  # homogeneidad de pendientes\nemmeans(modelo, pairwise ~ grupo)      # medias ajustadas + IC 95%\neta_squared(modelo, partial = TRUE)\npar(mfrow = c(2,2)); plot(modelo)',
+    mann_whitney: '# U de Mann-Whitney\nlibrary(effectsize)\nwilcox.test(resultado ~ grupo, data = datos, conf.int = TRUE)\nrank_biserial(resultado ~ grupo, data = datos)\nboxplot(resultado ~ grupo, data = datos)',
+    wilcoxon_una: '# Wilcoxon de una muestra\nwilcox.test(datos$resultado, mu = valor_referencia, conf.int = TRUE)',
+    wilcoxon_pareada: '# Wilcoxon de rangos con signo (pareada)\nwilcox.test(datos$resultado_post, datos$resultado_pre, paired = TRUE, conf.int = TRUE)',
+    anova_1f: '# ANOVA de un factor\nlibrary(car); library(effectsize)\nmodelo <- aov(resultado ~ grupo, data = datos)\nleveneTest(resultado ~ grupo, data = datos)\nsummary(modelo)\neta_squared(modelo, partial = TRUE)\nTukeyHSD(modelo)          # post-hoc con correccion\nplot(modelo, which = 2)   # Q-Q de residuos',
+    anova_rm: '# ANOVA de medidas repetidas\nlibrary(afex); library(emmeans)\nmodelo <- aov_ez(id = "id", dv = "resultado", within = "tiempo", data = datos_largo)\nmodelo   # incluye correccion de Greenhouse-Geisser si falla esfericidad\nemmeans(modelo, pairwise ~ tiempo)',
+    kruskal_wallis: '# Kruskal-Wallis\nlibrary(rstatix)\nkruskal.test(resultado ~ grupo, data = datos)\nkruskal_effsize(datos, resultado ~ grupo)\ndunn_test(datos, resultado ~ grupo, p.adjust.method = "holm")   # post-hoc\nboxplot(resultado ~ grupo, data = datos)',
+    friedman: '# Friedman\nfriedman.test(resultado ~ tiempo | id, data = datos_largo)\nlibrary(rstatix)\nfriedman_effsize(datos_largo, resultado ~ tiempo | id)',
+    dunnett: '# Test de Dunnett (grupo con "control" como nivel de referencia)\nlibrary(multcomp)\nmodelo <- aov(resultado ~ grupo, data = datos)\nsummary(glht(modelo, linfct = mcp(grupo = "Dunnett")))',
+    anova_2f: '# ANOVA de dos vias\nlibrary(car); library(effectsize); library(emmeans)\nmodelo <- aov(resultado ~ factor1 * factor2, data = datos)\nAnova(modelo, type = 3)\neta_squared(modelo, partial = TRUE)\nemmeans(modelo, pairwise ~ factor1 | factor2)\ninteraction.plot(datos$factor1, datos$factor2, datos$resultado)',
+    anova_mixto: '# ANOVA Mixto (grupos x condiciones)\nlibrary(afex); library(emmeans)\nmodelo <- aov_ez(id = "id", dv = "resultado", between = "grupo", within = "tiempo", data = datos_largo)\nmodelo\nemmeans(modelo, pairwise ~ grupo | tiempo)\nafex_plot(modelo, x = "tiempo", trace = "grupo")',
+    mixed_model: '# Modelo Mixto (efectos fijos y aleatorios)\nlibrary(lme4); library(lmerTest); library(performance)\nmodelo <- lmer(resultado ~ tiempo * grupo + (1 | id), data = datos_largo)\nsummary(modelo)\nconfint(modelo, method = "Wald")\nr2_nakagawa(modelo)   # R2 marginal / condicional',
+    gee_continuo: '# GEE para resultado continuo\nlibrary(geepack)\nmodelo <- geeglm(resultado ~ tiempo * grupo, id = id, data = datos_largo,\n                  family = gaussian, corstr = "exchangeable")\nsummary(modelo)',
+    gee_binario: '# GEE para resultado binario\nlibrary(geepack)\nmodelo <- geeglm(resultado ~ tiempo * grupo, id = id, data = datos_largo,\n                  family = binomial, corstr = "exchangeable")\nsummary(modelo)\nexp(coef(modelo))   # OR promedio poblacional',
+    glmm_logistico: '# Modelo logistico mixto\nlibrary(lme4)\nmodelo <- glmer(resultado ~ tiempo * grupo + (1 | id), data = datos_largo, family = binomial)\nsummary(modelo)\nexp(fixef(modelo))   # OR especifico de sujeto',
+    glmm_conteo: '# Modelo de conteo mixto\nlibrary(lme4); library(glmmTMB)\nmodelo <- glmer(resultado ~ tiempo + (1 | id), data = datos_largo, family = poisson)\n# si persiste sobredispersion tras los efectos aleatorios:\nmodelo_nb <- glmmTMB(resultado ~ tiempo + (1 | id), data = datos_largo, family = nbinom2)\nsummary(modelo)',
+    chi2: '# Chi-cuadrado de independencia\nlibrary(rstatix)\ntabla <- table(datos$var1, datos$var2)\nchisq.test(tabla)\ncramer_v(tabla)\nbarplot(tabla, beside = TRUE, legend = TRUE)',
+    fisher: '# Test exacto de Fisher\ntabla <- table(datos$var1, datos$var2)\nfisher.test(tabla)',
+    mcnemar: '# Test de McNemar\ntabla <- table(datos$antes, datos$despues)\nmcnemar.test(tabla, correct = TRUE)',
+    cochran_q: '# Q de Cochran\nlibrary(RVAideMemoire)\ncochran.qtest(resultado ~ tiempo | id, data = datos_largo)',
+    pearson: '# Correlacion de Pearson\ncor.test(datos$var1, datos$var2, method = "pearson")\nplot(datos$var1, datos$var2)\nabline(lm(var2 ~ var1, data = datos), col = "red")',
+    spearman: '# Correlacion de Spearman\ncor.test(datos$var1, datos$var2, method = "spearman")',
+    reg_lineal_simple: '# Regresion lineal simple\nmodelo <- lm(resultado ~ predictor, data = datos)\nsummary(modelo)\nconfint(modelo)\npar(mfrow = c(2,2)); plot(modelo)',
+    reg_lineal_multiple: '# Regresion lineal multiple\nlibrary(car)\nmodelo <- lm(resultado ~ predictor1 + predictor2, data = datos)\nsummary(modelo)\nvif(modelo)\nconfint(modelo)\nplot(modelo, which = 1)',
+    reg_logistica: '# Regresion logistica\nmodelo <- glm(resultado ~ predictor1 + predictor2, data = datos, family = binomial)\nsummary(modelo)\nexp(cbind(OR = coef(modelo), confint(modelo)))',
+    reg_logistica_ordinal: '# Regresion logistica ordinal\nlibrary(MASS); library(brant)\nmodelo <- polr(resultado ~ predictor1 + predictor2, data = datos, Hess = TRUE)\nsummary(modelo)\nbrant(modelo)   # test de odds proporcionales\nexp(cbind(OR = coef(modelo), confint(modelo)))',
+    reg_multinomial: '# Regresion multinomial\nlibrary(nnet)\nmodelo <- multinom(resultado ~ predictor1 + predictor2, data = datos)\nsummary(modelo)\nexp(coef(modelo))',
+    reg_poisson: '# Regresion de Poisson\nlibrary(AER)\nmodelo <- glm(resultado ~ predictor, data = datos, family = poisson,\n              offset = log(tiempo_exposicion))   # offset solo si modelas una tasa\nsummary(modelo)\nexp(cbind(RR = coef(modelo), confint(modelo)))\ndispersiontest(modelo)   # comprobar sobredispersion',
+    reg_binomial_negativa: '# Regresion binomial negativa\nlibrary(MASS)\nmodelo <- glm.nb(resultado ~ predictor, data = datos)\nsummary(modelo)\nexp(cbind(RR = coef(modelo), confint(modelo)))',
+    reg_zeroinflated: '# Modelo con exceso de ceros (ZIP / ZINB)\nlibrary(pscl)\nmodelo <- zeroinfl(resultado ~ predictor | predictor, data = datos, dist = "negbin")\nsummary(modelo)',
+    logrank: '# Test de Log-Rank sobre Kaplan-Meier\nlibrary(survival); library(survminer)\najuste <- survfit(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nsurvdiff(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nggsurvplot(ajuste, data = datos, risk.table = TRUE, pval = TRUE)',
+    cox: '# Regresion de Cox\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento) ~ predictor, data = datos)\nsummary(modelo)\ncox.zph(modelo)   # riesgos proporcionales (residuos de Schoenfeld)',
+    cox_estratificado: '# Cox estratificado\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento) ~ predictor + strata(centro), data = datos)\nsummary(modelo)',
+    cox_tiempo_variable: '# Cox con covariable dependiente del tiempo (formato de intervalos)\nlibrary(survival)\nmodelo <- coxph(Surv(inicio, fin, evento) ~ predictor_tiempo_variable, data = datos_intervalos)\nsummary(modelo)',
+    riesgos_causa_especifica: '# Riesgos causa-especificos (evento competitivo censurado)\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento == 1) ~ predictor, data = datos)\nsummary(modelo)',
+    fine_gray: '# Modelo de Fine-Gray\nlibrary(cmprsk)\najuste <- crr(datos$tiempo_evento, datos$evento_codificado, datos[, c("predictor")])\nsummary(ajuste)',
+    superv_parametrica: '# Modelo parametrico de supervivencia (Weibull)\nlibrary(survival)\nmodelo <- survreg(Surv(tiempo_evento, evento) ~ predictor, data = datos, dist = "weibull")\nsummary(modelo)'
+  };
+  function rcodeBlockHtml(testId){
+    var code = RCODE[testId];
+    if(!code) return "";
+    return '<h4>Código reproducible (R)</h4><div class="formula-box" style="font-size:.82rem; white-space:pre;">'+escapeHtml(code)+'</div>';
+  }
 
   /* ============================================================
      2. ÁRBOL DE DECISIÓN DEL ASISTENTE
@@ -1567,13 +1646,16 @@
           altHtml + effectBlockHtml(test) + multiplicityBlockHtml(test) + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
           '<div class="result-actions">'+
             '<button class="btn btn-primary" id="wiz-view-detail" type="button">Ver en Diccionario<svg><use href="#i-arrow"/></svg></button>'+
-            '<button class="btn btn-ghost" id="wiz-restart-2" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
+            (RCODE[test.id] ? '<button class="btn btn-ghost" id="wiz-gen-plan" type="button"><svg><use href="#i-file"/></svg>Generar plan de análisis</button>' : '')+
+            '<button class="text-btn" id="wiz-restart-2" type="button" style="margin-left:auto;"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
           '</div>'+
         '</div>'+
         '<div class="wizard-footer"><button class="text-btn" id="wiz-back" type="button"><svg><use href="#i-back"/></svg>Paso anterior</button><span></span></div>';
 
       document.getElementById("wiz-view-detail").addEventListener("click", function(){ goToDictionary(test.id); });
       document.getElementById("wiz-restart-2").addEventListener("click", restartWizard);
+      var genPlanBtn = document.getElementById("wiz-gen-plan");
+      if(genPlanBtn){ genPlanBtn.addEventListener("click", function(){ openPlanModal(test, node); }); }
       var gotoBtn = stageEl.querySelector("[data-goto-test]");
       if(gotoBtn){ gotoBtn.addEventListener("click", function(){ goToDictionary(gotoBtn.getAttribute("data-goto-test")); }); }
       var chartBtn = stageEl.querySelector("[data-goto-chart]");
@@ -1664,6 +1746,7 @@
       '<h4>Requisitos / supuestos previos</h4><ul class="assump-list">'+test.assumptions.map(function(a){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>';}).join("")+'</ul>'+
       (test.effect ? '<h4>Tamaño del efecto</h4><p><b>'+escapeHtml(test.effect.name)+'.</b> '+escapeHtml(test.effect.note)+' Preséntalo siempre con su IC 95%.</p>' : '')+
       (test.multiplicity ? '<h4>Comparaciones múltiples</h4><p>'+escapeHtml(test.multiplicity)+'</p>' : '')+
+      rcodeBlockHtml(test.id)+
       relatedHtml;
   }
   function matchesSearch(hayFields, q){ if(!q) return true; q=q.toLowerCase(); return hayFields.join(" ").toLowerCase().indexOf(q)!==-1; }
@@ -1971,6 +2054,116 @@
     var subject = "Sugerencia — Selector Estadístico";
     var mailto = "mailto:"+SUGGEST_EMAIL+"?subject="+encodeURIComponent(subject)+"&body="+encodeURIComponent(body);
     window.location.href = mailto;
+  });
+
+  /* ============================================================
+     14B. MODO PUBLICACIÓN — GENERADOR DEL PLAN DE ANÁLISIS
+  ============================================================ */
+  var planModal = document.getElementById("plan-modal");
+  var planClose = document.getElementById("plan-close");
+  var planFormView = document.getElementById("plan-form-view");
+  var planResultView = document.getElementById("plan-result-view");
+  var planQuestionEl = document.getElementById("plan-question");
+  var planHypothesisEl = document.getElementById("plan-hypothesis");
+  var planUnitEl = document.getElementById("plan-unit");
+  var planOutputEl = document.getElementById("plan-output");
+  var planGenerateBtn = document.getElementById("plan-generate");
+  var planCopyBtn = document.getElementById("plan-copy");
+  var planDownloadBtn = document.getElementById("plan-download");
+  var planBackBtn = document.getElementById("plan-back");
+  var planContext = null;
+
+  function openPlanModal(test, node){
+    planContext = { test:test, node:node };
+    planFormView.hidden = false;
+    planResultView.hidden = true;
+    planModal.hidden = false;
+    planQuestionEl.focus();
+  }
+  function closePlanModal(){ planModal.hidden = true; }
+
+  function buildPlanText(test, node, question, hypothesis, unit){
+    var lines = [];
+    lines.push("PLAN DE ANÁLISIS ESTADÍSTICO");
+    lines.push("Generado con Selector Estadístico — revisa y adapta cada apartado antes de usarlo.");
+    lines.push("");
+    lines.push("1. PREGUNTA DE INVESTIGACIÓN");
+    lines.push(question || "[Completa la pregunta de investigación]");
+    lines.push("");
+    lines.push("2. HIPÓTESIS");
+    lines.push(hypothesis || "[Completa la hipótesis]");
+    lines.push("");
+    lines.push("3. DISEÑO DEL ESTUDIO");
+    lines.push("Unidad experimental: " + (unit || "[Completa]"));
+    lines.push("Método principal: " + test.name);
+    lines.push("Estimando: " + (test.effect ? test.effect.name : "—"));
+    lines.push("");
+    lines.push("4. JUSTIFICACIÓN DE LA ELECCIÓN");
+    lines.push(node.justification || node.text || "—");
+    lines.push("");
+    lines.push("5. SUPUESTOS QUE DEBEN COMPROBARSE");
+    (test.assumptions||[]).forEach(function(a){ lines.push("- " + a); });
+    lines.push("");
+    lines.push("6. TAMAÑO DEL EFECTO E INTERVALO DE CONFIANZA");
+    if(test.effect){ lines.push(test.effect.name + ". " + test.effect.note + " Repórtalo siempre junto a su IC 95%."); }
+    lines.push("");
+    lines.push("7. CORRECCIÓN POR COMPARACIONES MÚLTIPLES");
+    lines.push(test.multiplicity || "No es un requisito directo de este análisis; revísalo si realizas comparaciones o pruebas adicionales sobre los mismos datos.");
+    lines.push("");
+    lines.push("8. TRATAMIENTO DE DATOS FALTANTES");
+    lines.push("Si existen valores faltantes, evalúa su porcentaje y patrón antes de elegir el método (ver Diccionario → Diagnóstico y Correcciones → Datos faltantes). No elimines automáticamente todos los casos incompletos sin justificarlo.");
+    lines.push("");
+    if(node.chart){
+      var c = CHARTS.filter(function(x){ return x.id===node.chart.id; })[0];
+      lines.push("9. GRÁFICO RECOMENDADO");
+      lines.push((c?c.name+". ":"") + node.chart.note);
+      lines.push("");
+    }
+    if(test.related){
+      var rel = TESTS_BY_ID[test.related.id];
+      lines.push("10. ALTERNATIVA / ANÁLISIS DE SENSIBILIDAD");
+      lines.push(test.related.label + ": " + rel.name + ".");
+      lines.push("");
+    }
+    lines.push("11. PLANTILLA PARA MÉTODOS");
+    lines.push('"Para responder a la pregunta de investigación planteada, se utilizó ' + test.name + '. ' + test.def + ' Se presenta ' + (test.effect?test.effect.name.toLowerCase():"el tamaño del efecto") + ' junto con su intervalo de confianza del 95%."');
+    lines.push("");
+    lines.push("12. PLANTILLA PARA RESULTADOS");
+    lines.push('"[Completa con tus resultados] El análisis mediante ' + test.name + ' mostró [estadístico, grados de libertad si procede, p-valor]. El ' + (test.effect?test.effect.name.toLowerCase():"efecto") + ' fue de [valor] (IC 95%: [inferior, superior])."');
+    lines.push("");
+    lines.push("13. CÓDIGO REPRODUCIBLE (R)");
+    lines.push(RCODE[test.id] || "# No hay código de ejemplo disponible para esta prueba todavía.");
+    return lines.join("\n");
+  }
+
+  planClose.addEventListener("click", closePlanModal);
+  planModal.addEventListener("click", function(e){ if(e.target === planModal) closePlanModal(); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !planModal.hidden) closePlanModal(); });
+  planGenerateBtn.addEventListener("click", function(){
+    if(!planContext) return;
+    var text = buildPlanText(planContext.test, planContext.node, planQuestionEl.value.trim(), planHypothesisEl.value.trim(), planUnitEl.value.trim());
+    planOutputEl.value = text;
+    planFormView.hidden = true;
+    planResultView.hidden = false;
+  });
+  planBackBtn.addEventListener("click", function(){ planFormView.hidden = false; planResultView.hidden = true; });
+  planCopyBtn.addEventListener("click", function(){
+    planOutputEl.select();
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(planOutputEl.value); }
+      else{ document.execCommand("copy"); }
+      var original = planCopyBtn.innerHTML;
+      planCopyBtn.innerHTML = '<svg><use href="#i-check"/></svg>Copiado';
+      setTimeout(function(){ planCopyBtn.innerHTML = original; }, 1800);
+    }catch(e){}
+  });
+  planDownloadBtn.addEventListener("click", function(){
+    var blob = new Blob([planOutputEl.value], {type:"text/plain;charset=utf-8"});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "plan-analisis.txt";
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   });
 
   /* ============================================================
