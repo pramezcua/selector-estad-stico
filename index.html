@@ -582,7 +582,34 @@
       formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia",
       assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Frecuencias esperadas ≥ 5 en al menos el 80% de las celdas.","Si no se cumple, usar el test exacto de Fisher."],
       effect:{name:"V de Cramér, u odds ratio/riesgo relativo si la tabla es 2×2", note:"En tablas 2×2, el odds ratio o el riesgo relativo con IC 95% son más informativos e interpretables que V de Cramér."},
-      related:null },
+      related:{id:"fisher", label:"Alternativa exacta con frecuencias esperadas pequeñas"} },
+
+    { id:"fisher", name:"Test exacto de Fisher", category:"asociacion", paradigm:"No paramétrica",
+      def:"Prueba exacta que evalúa la asociación entre dos variables categóricas, habitualmente en una tabla 2×2, calculando la probabilidad exacta de la tabla observada y de tablas igual de extremas o más, sin depender de la aproximación asintótica que usa Chi-cuadrado. Es la alternativa recomendada cuando las frecuencias esperadas son pequeñas o el tamaño muestral es reducido.",
+      uses:["Comparar la tasa de respuesta a un tratamiento en un ensayo clínico pequeño (tabla 2×2 con n reducido).","Analizar una tabla de contingencia con alguna celda de frecuencia esperada menor de 5."],
+      formula:"P = "+frac("(a+b)!(c+d)!(a+c)!(b+d)!","n! · a! · b! · c! · d!"),
+      formulaNote:"a, b, c, d: frecuencias de las cuatro celdas de la tabla 2×2 · n: tamaño muestral total · se suman las probabilidades de todas las tablas igual de extremas o más que la observada.",
+      assumptions:["Ambas variables categóricas, habitualmente en una tabla 2×2 (existen extensiones a tablas mayores).","Observaciones independientes.","Especialmente recomendado con frecuencias esperadas &lt;5 en alguna celda, o muestras pequeñas.","No depende de la aproximación asintótica de Chi-cuadrado."],
+      effect:{name:"Odds ratio con IC 95% exacto (de Cornfield)", note:"En tablas 2×2, el odds ratio con su IC exacto es la medida de efecto más informativa junto al p-valor exacto."},
+      related:{id:"chi2", label:"Versión asintótica (válida con muestras grandes)"} },
+
+    { id:"mcnemar", name:"Test de McNemar", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Prueba no paramétrica que compara las proporciones de un resultado binario medido dos veces sobre los mismos sujetos (ej. antes/después, o dos evaluadores), evaluando si los cambios en una dirección son más frecuentes que en la otra.",
+      uses:["Comparar la proporción de pacientes con un síntoma antes y después de un tratamiento, en los mismos sujetos.","Comparar el acuerdo entre dos evaluadores sobre un resultado binario en los mismos casos."],
+      formula:"χ² = "+frac("(b−c)²","b+c"),
+      formulaNote:"b, c: número de pares discordantes (cambian de categoría en cada dirección) · con b+c &lt; 25, usa la corrección de continuidad o la versión exacta binomial.",
+      assumptions:["Variable dependiente binaria.","Datos pareados: mismos sujetos evaluados en dos ocasiones (o dos evaluadores sobre los mismos casos).","El contraste se basa únicamente en los pares discordantes; los pares concordantes no aportan información."],
+      effect:{name:"Odds ratio de los pares discordantes (b/c), con IC 95%", note:"Cuantifica la asimetría entre los cambios en una dirección y en la otra."},
+      related:{id:"cochran_q", label:"Extensión a más de dos mediciones binarias relacionadas"} },
+
+    { id:"cochran_q", name:"Q de Cochran", category:"no_parametrica", paradigm:"No paramétrica",
+      def:"Extensión de McNemar para comparar las proporciones de un resultado binario medido en tres o más ocasiones sobre los mismos sujetos.",
+      uses:["Comparar la proporción de éxito de un tratamiento evaluada en tres o más momentos sobre los mismos pacientes.","Comparar el acuerdo de tres o más evaluadores sobre un resultado binario en los mismos casos."],
+      formula:"Q = "+frac("k(k−1) Σⱼ(Cⱼ − C̄)²","k Σᵢ Rᵢ − Σᵢ Rᵢ²"),
+      formulaNote:"k: número de condiciones/momentos · Cⱼ: total de éxitos en la condición j · Rᵢ: total de éxitos del sujeto i · se distribuye aproximadamente como χ² con k−1 grados de libertad.",
+      assumptions:["Variable dependiente binaria.","Mismos sujetos evaluados en ≥3 condiciones o momentos.","Diseño de bloques completos.","Si resulta significativo, requiere comparaciones post-hoc por pares (ej. McNemar con corrección por comparaciones múltiples) para identificar qué condiciones difieren."],
+      effect:{name:"Proporciones de éxito por condición, con IC 95%", note:"Para pares específicos, usa McNemar post-hoc con corrección por comparaciones múltiples (ver Diccionario · Diagnóstico y Correcciones)."},
+      related:{id:"mcnemar", label:"Versión para exactamente dos mediciones"} },
 
     { id:"pearson", name:"Correlación de Pearson", category:"asociacion", paradigm:"Paramétrica",
       def:"Coeficiente que mide la fuerza y dirección de la relación lineal entre dos variables cuantitativas, con valores entre −1 y 1.",
@@ -629,6 +656,24 @@
       effect:{name:"Odds ratio (exp(β)) con IC 95% por predictor", note:"Evita reportar solo el p-valor: el OR con su IC comunica la magnitud y precisión del efecto."},
       related:{id:"reg_lineal_multiple", label:"Ver también"} },
 
+    { id:"reg_logistica_ordinal", name:"Regresión logística ordinal", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo de regresión para una variable dependiente categórica ordinal (más de dos niveles con orden natural), que estima la probabilidad acumulada de estar en una categoría o inferior en función de una o más variables predictoras.",
+      uses:["Modelar el estadio de gravedad de una enfermedad (leve/moderado/grave) en función de factores de riesgo.","Analizar una escala Likert ordinal como variable dependiente, sin colapsarla artificialmente a binaria y perder información."],
+      formula:"ln"+frac("P(Y≤j)","P(Y&gt;j)")+" = α<sub>j</sub> − (β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
+      formulaNote:"j: cada punto de corte entre categorías consecutivas · α_j: intercepto propio de cada corte · el modelo asume que los coeficientes β son los mismos en todos los cortes (supuesto de odds proporcionales).",
+      assumptions:["Variable dependiente categórica ordinal (≥3 niveles con orden natural).","Supuesto de odds proporcionales: el efecto de cada predictor es el mismo en todos los puntos de corte — compruébalo con un test de líneas paralelas (Brant) antes de interpretar un único coeficiente por predictor.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores.","Categorías con suficientes observaciones (evita niveles casi vacíos)."],
+      effect:{name:"Odds ratio proporcional (exp(β)) con IC 95% por predictor", note:"Si falla el supuesto de odds proporcionales, considera un modelo de odds parciales o una regresión multinomial."},
+      related:{id:"reg_multinomial", label:"Si las categorías no tienen un orden claro"} },
+
+    { id:"reg_multinomial", name:"Regresión multinomial", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo de regresión para una variable dependiente categórica nominal con más de dos niveles sin orden natural, que estima la probabilidad de pertenecer a cada categoría —frente a una categoría de referencia— en función de una o más variables predictoras.",
+      uses:["Modelar el tipo de complicación postquirúrgica (ninguna/leve/grave) cuando las categorías no tienen un orden claro, o se prefiere no asumirlo.","Predecir la elección entre varias opciones de tratamiento no ordenadas."],
+      formula:"ln"+frac("P(Y=k)","P(Y=ref)")+" = β<sub>0k</sub> + β<sub>1k</sub>X₁ + ⋯ + β<sub>pk</sub>X<sub>p</sub>",
+      formulaNote:"k: cada categoría comparada frente a la categoría de referencia · se estima un conjunto de coeficientes β independiente para cada categoría no-referencia.",
+      assumptions:["Variable dependiente categórica nominal con ≥3 niveles.","Independencia de alternativas irrelevantes (IIA) — supuesto fuerte, a veces poco realista; compruébalo si es posible.","Independencia de las observaciones.","Ausencia de multicolinealidad.","Tamaño muestral suficiente por categoría (cada nivel necesita observaciones propias para estimar sus coeficientes)."],
+      effect:{name:"Odds ratio (exp(β)) con IC 95%, por categoría y predictor", note:"Cada predictor tiene un OR distinto por cada categoría no-referencia — repórtalos todos, no solo uno."},
+      related:{id:"reg_logistica_ordinal", label:"Si las categorías sí tienen un orden natural"} },
+
     { id:"logrank", name:"Test de Log-Rank (Mantel-Cox)", category:"supervivencia", paradigm:"No paramétrica",
       def:"Prueba no paramétrica que compara las curvas de supervivencia (tiempo hasta un evento) entre dos o más grupos, contrastando el número de eventos observados frente a los esperados en cada momento.",
       uses:["Comparar la supervivencia libre de progresión entre dos brazos de un ensayo clínico.","Comparar el tiempo hasta el alta hospitalaria entre grupos de tratamiento."],
@@ -666,7 +711,22 @@
     q_comp_var_tipo:{ type:"question", text:"¿Qué tipo de variable estás comparando entre los grupos?",
       options:[
         {label:"Cuantitativa (numérica: continua o discreta)", next:"q_comp_estructura"},
-        {label:"Cualitativa / categórica (nominal u ordinal)", next:"res_chi2_grupos"}
+        {label:"Cualitativa / categórica (nominal u ordinal)", next:"q_cat_diseno"}
+      ] },
+
+    q_cat_diseno:{ type:"question", text:"¿Cómo se relacionan las muestras que comparas?",
+      help:"Independientes: sujetos distintos en cada grupo (ej. tratamiento vs. control). Pareadas/repetidas: los mismos sujetos evaluados en dos o más ocasiones (ej. antes/después, o varios evaluadores sobre los mismos casos).",
+      options:[
+        {label:"Grupos independientes (sujetos distintos)", next:"q_cat_grupos_tabla"},
+        {label:"Mismos sujetos evaluados dos veces (variable binaria)", next:"res_mcnemar"},
+        {label:"Mismos sujetos evaluados en 3 o más ocasiones (variable binaria)", next:"res_cochran_q"}
+      ] },
+
+    q_cat_grupos_tabla:{ type:"question", text:"¿Tienes una tabla 2×2 con muestra pequeña, o frecuencias esperadas menores de 5 en alguna celda?",
+      help:"Regla habitual: se necesitan frecuencias esperadas ≥5 en al menos el 80% de las celdas para que la aproximación de Chi-cuadrado sea fiable. Con tablas 2×2 y muestras pequeñas, el test exacto de Fisher es preferible.",
+      options:[
+        {label:"No, la muestra y las frecuencias esperadas son adecuadas", next:"res_chi2_grupos"},
+        {label:"Sí, frecuencias esperadas pequeñas o tabla 2×2 con muestra reducida", next:"res_fisher_grupos"}
       ] },
 
     q_comp_estructura:{ type:"question", text:"¿Cómo es la estructura de tu comparación?",
@@ -742,15 +802,33 @@
     q_asoc_tipo:{ type:"question", text:"¿Qué tipo de variables quieres relacionar?",
       options:[
         {label:"Dos variables cuantitativas", next:"q_asoc_cuant_sup"},
-        {label:"Dos variables categóricas", next:"res_chi2_asoc"},
+        {label:"Dos variables categóricas", next:"q_cat_asoc_tabla"},
         {label:"Una cuantitativa y una categórica", next:"res_guidance_mixta"}
+      ] },
+
+    q_cat_asoc_tabla:{ type:"question", text:"¿Tienes una tabla 2×2 con muestra pequeña, o frecuencias esperadas menores de 5 en alguna celda?",
+      help:"Regla habitual: se necesitan frecuencias esperadas ≥5 en al menos el 80% de las celdas para que la aproximación de Chi-cuadrado sea fiable. Con tablas 2×2 y muestras pequeñas, el test exacto de Fisher es preferible.",
+      options:[
+        {label:"No, la muestra y las frecuencias esperadas son adecuadas", next:"res_chi2_asoc"},
+        {label:"Sí, frecuencias esperadas pequeñas o tabla 2×2 con muestra reducida", next:"res_fisher_asoc"}
       ] },
 
     q_asoc_cuant_sup:{ type:"question", text:"¿La relación es lineal y ambas variables siguen una distribución normal?",
       options:[ {label:"Sí", next:"res_pearson"}, {label:"No, o hay valores atípicos", next:"res_spearman"} ] },
 
     q_pred_tipo:{ type:"question", text:"¿Qué tipo de variable quieres predecir (variable dependiente)?",
-      options:[ {label:"Cuantitativa continua", next:"q_pred_npred"}, {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"} ] },
+      options:[
+        {label:"Cuantitativa continua", next:"q_pred_npred"},
+        {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"},
+        {label:"Categórica con más de dos niveles (nominal u ordinal)", next:"q_pred_cat_orden"}
+      ] },
+
+    q_pred_cat_orden:{ type:"question", text:"¿Las categorías de la variable a predecir tienen un orden natural?",
+      help:"Si se pueden ordenar de menor a mayor (ej. leve/moderado/grave), trátalas como ordinales — aprovechar el orden aumenta la potencia estadística frente a ignorarlo. Si no hay un orden claro (ej. tipo de complicación), usa una regresión multinomial.",
+      options:[
+        {label:"Sí, tienen un orden natural (ordinal)", next:"res_reg_logistica_ordinal"},
+        {label:"No, no hay un orden claro (nominal)", next:"res_reg_multinomial"}
+      ] },
 
     q_pred_npred:{ type:"question", text:"¿Cuántas variables predictoras vas a usar?",
       options:[ {label:"1 predictor", next:"q_pred_sup_simple"}, {label:"2 o más predictores", next:"q_pred_sup_multiple"} ] },
@@ -785,13 +863,19 @@
     res_kruskal_wallis:{ type:"result", testId:"kruskal_wallis", justification:"Comparas más de dos grupos independientes sin cumplir los supuestos paramétricos. La alternativa no paramétrica es Kruskal-Wallis.", chart:{id:"violin", note:"Violin plot o boxplot por grupo; complementa con post-hoc de Dunn si procede."} },
     res_anova_rm:{ type:"result", testId:"anova_rm", justification:"Mides la misma variable en más de dos momentos sobre los mismos sujetos y las diferencias cumplen normalidad: usa el ANOVA de medidas repetidas.", chart:{id:"interaction_plot", note:"Perfil de medias por momento/condición con barras de error (IC95%)."} },
     res_friedman:{ type:"result", testId:"friedman", justification:"Tu diseño tiene medidas repetidas en más de dos condiciones, pero no se cumple normalidad. La alternativa no paramétrica es la prueba de Friedman.", chart:{id:"interaction_plot", note:"Perfil de medianas por condición; conecta las observaciones de cada sujeto si n es pequeño."} },
-    res_chi2_grupos:{ type:"result", testId:"chi2", justification:"Comparas la distribución de una variable categórica entre grupos, lo que equivale a analizar la asociación entre dos variables cualitativas: usa la prueba Chi-cuadrado de independencia.", chart:{id:"barplot_error", note:"Barras agrupadas de frecuencias o proporciones por grupo (sin barras de error, al ser conteos)."} },
-    res_chi2_asoc:{ type:"result", testId:"chi2", justification:"Quieres analizar la asociación entre dos variables categóricas: la prueba Chi-cuadrado de independencia compara las frecuencias observadas frente a las esperadas bajo independencia.", chart:{id:"barplot_error", note:"Barras agrupadas o gráfico de mosaico según el número de categorías."} },
+    res_chi2_grupos:{ type:"result", testId:"chi2", justification:"Comparas la distribución de una variable categórica entre grupos, lo que equivale a analizar la asociación entre dos variables cualitativas, y tus frecuencias esperadas son adecuadas: usa la prueba Chi-cuadrado de independencia.", chart:{id:"barplot_error", note:"Barras agrupadas de frecuencias o proporciones por grupo (sin barras de error, al ser conteos)."} },
+    res_chi2_asoc:{ type:"result", testId:"chi2", justification:"Quieres analizar la asociación entre dos variables categóricas y tus frecuencias esperadas son adecuadas: la prueba Chi-cuadrado de independencia compara las frecuencias observadas frente a las esperadas bajo independencia.", chart:{id:"barplot_error", note:"Barras agrupadas o gráfico de mosaico según el número de categorías."} },
+    res_fisher_grupos:{ type:"result", testId:"fisher", justification:"Comparas la distribución de una variable categórica entre grupos independientes, pero tienes frecuencias esperadas pequeñas (o una tabla 2×2 con muestra reducida): usa el test exacto de Fisher, que no depende de la aproximación asintótica de Chi-cuadrado.", chart:{id:"barplot_error", note:"Barras agrupadas de frecuencias o proporciones por grupo, con IC exacto del odds ratio si es una tabla 2×2."} },
+    res_fisher_asoc:{ type:"result", testId:"fisher", justification:"Quieres analizar la asociación entre dos variables categóricas, pero tienes frecuencias esperadas pequeñas (o una tabla 2×2 con muestra reducida): usa el test exacto de Fisher en vez de Chi-cuadrado.", chart:{id:"barplot_error", note:"Tabla de contingencia con proporciones e IC exacto del odds ratio."} },
+    res_mcnemar:{ type:"result", testId:"mcnemar", justification:"Comparas una variable binaria medida dos veces sobre los mismos sujetos: usa el test de McNemar, que compara las proporciones a partir de los pares discordantes en vez de tratar las dos mediciones como grupos independientes.", chart:{id:"barplot_error", note:"Barras de proporciones en cada momento, o una tabla 2×2 de concordancia/discordancia."} },
+    res_cochran_q:{ type:"result", testId:"cochran_q", justification:"Comparas una variable binaria medida en tres o más ocasiones sobre los mismos sujetos: usa la prueba Q de Cochran, la extensión de McNemar para más de dos mediciones relacionadas.", chart:{id:"barplot_error", note:"Barras de proporciones de éxito en cada momento o condición."} },
     res_pearson:{ type:"result", testId:"pearson", justification:"Quieres cuantificar la relación entre dos variables cuantitativas con relación lineal y normalidad: el coeficiente de correlación de Pearson es el adecuado.", chart:{id:"scatter_plot", note:"Diagrama de dispersión con recta de regresión y su intervalo de confianza."} },
     res_spearman:{ type:"result", testId:"spearman", justification:"Quieres analizar la relación entre variables cuantitativas u ordinales sin asumir normalidad o linealidad estricta: usa el coeficiente de correlación de Spearman.", chart:{id:"scatter_plot", note:"Diagrama de dispersión; considera mostrar también los rangos si hay outliers extremos."} },
     res_reg_lineal_simple:{ type:"result", testId:"reg_lineal_simple", justification:"Quieres predecir o modelar una variable cuantitativa continua a partir de un único predictor: usa la regresión lineal simple.", chart:{id:"scatter_plot", note:"Dispersión de X vs Y con la recta ajustada, y un gráfico de residuos para validar supuestos."} },
     res_reg_lineal_multiple:{ type:"result", testId:"reg_lineal_multiple", justification:"Quieres predecir una variable cuantitativa continua a partir de dos o más predictores simultáneamente: usa la regresión lineal múltiple.", chart:{id:"scatter_plot", note:"Gráfico de valores observados vs. predichos, y de residuos vs. valores ajustados."} },
     res_reg_logistica:{ type:"result", testId:"reg_logistica", justification:"Quieres predecir una variable categórica binaria en función de una o más variables predictoras: usa la regresión logística.", chart:{id:"forest_plot", note:"Forest plot con las odds ratios (exp(β)) y sus IC95% por predictor."} },
+    res_reg_logistica_ordinal:{ type:"result", testId:"reg_logistica_ordinal", justification:"Quieres predecir una variable categórica con más de dos niveles que sí tienen un orden natural: usa la regresión logística ordinal, que aprovecha ese orden en vez de tratar las categorías como si no tuvieran relación entre sí.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios proporcionales (exp(β)) y sus IC95% por predictor."} },
+    res_reg_multinomial:{ type:"result", testId:"reg_multinomial", justification:"Quieres predecir una variable categórica con más de dos niveles sin un orden claro: usa la regresión multinomial, que estima la probabilidad de cada categoría frente a una de referencia.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios (exp(β)) por categoría y predictor, frente a la categoría de referencia."} },
     res_reg_diagnostico_alerta:{ type:"guidance", title:"Revisa los diagnósticos antes de interpretar el modelo",
       text:"Un modelo con residuos problemáticos (no lineales, heterocedásticos, no normales) o con observaciones muy influyentes puede dar coeficientes sesgados o intervalos de confianza poco fiables. Antes de interpretar los resultados, valora: transformar la variable dependiente o algún predictor (ver Transformaciones en el Diccionario), usar errores estándar robustos si solo falla la homocedasticidad, investigar o justificar la exclusión de observaciones muy influyentes (distancia de Cook), o reducir el número de predictores si hay multicolinealidad severa (VIF > 10).",
       links:[ {id:"reg_lineal_simple", note:"si finalmente decides continuar con un único predictor"}, {id:"reg_lineal_multiple", note:"si finalmente decides continuar con varios predictores"} ],
@@ -1062,12 +1146,17 @@
     anova_2f:{ varTypes:["discreta","continua"], groups:"any", design:"independientes", normality:true, homoscedasticity:true },
     anova_mixto:{ varTypes:["discreta","continua"], groups:"any", design:"pareadas", normality:true, homoscedasticity:true, sphericity:true, missingAllowed:false, designSwap:{id:"anova_2f", when:"independientes"} },
     mixed_model:{ varTypes:["discreta","continua"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
-    chi2:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false },
+    chi2:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"mcnemar", when:"pareadas"} },
+    fisher:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"mcnemar", when:"pareadas"} },
+    mcnemar:{ varTypes:["nominal"], groups:2, design:"pareadas", normality:false, homoscedasticity:false, designSwap:{id:"chi2", when:"independientes"} },
+    cochran_q:{ varTypes:["nominal"], groups:"ge3", design:"pareadas", normality:false, homoscedasticity:false, designSwap:{id:"chi2", when:"independientes"} },
     pearson:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:false },
     spearman:{ varTypes:["ordinal","discreta","continua"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_lineal_simple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
     reg_lineal_multiple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
     reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    reg_logistica_ordinal:{ varTypes:["ordinal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    reg_multinomial:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     logrank:{ varTypes:["tiempo_evento"], groups:"any", design:"independientes", normality:false, homoscedasticity:false },
     cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false }
   };
