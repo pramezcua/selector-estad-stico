@@ -144,6 +144,10 @@
   .chart-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--cat-no_parametrica); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
   .chart-box .chart-name{ font-weight:700; font-size:.95rem; margin-bottom:.3rem; display:block; }
   .chart-box p{ font-size:.88rem; line-height:1.55; color:var(--text); margin-bottom:.5rem; }
+  .effect-box{ background:var(--accent-soft); border:1px solid var(--border); border-radius:var(--radius); padding:.9rem 1rem; margin-bottom:1.2rem; }
+  .effect-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-ink); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
+  .effect-box .effect-name{ font-weight:700; font-size:.95rem; margin-bottom:.3rem; display:block; }
+  .effect-box p{ font-size:.88rem; line-height:1.55; color:var(--text); }
   .req-block{ margin-top:1.2rem; }
   .req-block .req-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.6rem; }
 
@@ -433,6 +437,7 @@
       formula:"t = "+frac("x̄ − μ₀","s / √n"),
       formulaNote:"x̄: media muestral · μ₀: valor de referencia · s: desviación estándar muestral · n: tamaño de la muestra · gl = n − 1",
       assumptions:["Variable dependiente cuantitativa continua.","Observaciones independientes entre sí.","La variable sigue una distribución aproximadamente normal (o n ≥ 30 por el TCL)."],
+      effect:{name:"Diferencia respecto al valor de referencia, y d de Cohen de una muestra", note:"Reporta la diferencia media con su IC 95%, junto con d de Cohen como medida estandarizada."},
       related:{id:"wilcoxon_una", label:"Alternativa no paramétrica"} },
 
     { id:"t_welch", name:"t de Welch (varianzas desiguales)", category:"parametrica", paradigm:"Paramétrica",
@@ -441,6 +446,7 @@
       formula:"t = "+frac("x̄₁ − x̄₂", sqrt("s₁²/n₁ + s₂²/n₂")),
       formulaNote:"Los grados de libertad se calculan con la aproximación de Welch-Satterthwaite (un valor no entero que penaliza la heterogeneidad de varianzas), no como n₁+n₂−2.",
       assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Distribución razonablemente simétrica en cada grupo, sin outliers claramente influyentes — evalúa esto de forma conjunta (Q-Q plot, histograma, tamaño muestral), no con una única prueba de normalidad.","No exige varianzas iguales entre grupos.","Con asimetría grave, outliers muy influyentes o muestras muy pequeñas por grupo, valora métodos robustos o bootstrap como análisis de sensibilidad."],
+      effect:{name:"Diferencia de medias y Hedges g", note:"Reporta la diferencia de medias con su IC 95%; Hedges g corrige el sesgo de d de Cohen en muestras pequeñas y es preferible a él en ese caso."},
       related:{id:"t_independiente", label:"Versión con varianzas combinadas (solo si están confirmadas como similares)"} },
 
     { id:"t_independiente", name:"t de Student para muestras independientes (varianzas combinadas)", category:"parametrica", paradigm:"Paramétrica",
@@ -449,6 +455,7 @@
       formula:"t = "+frac("x̄₁ − x̄₂", sqrt("s²ₚ (1/n₁ + 1/n₂)"))+"&nbsp;&nbsp;&nbsp; s²ₚ = "+frac("(n₁−1)s₁² + (n₂−1)s₂²","n₁ + n₂ − 2"),
       formulaNote:"x̄₁, x̄₂: medias de cada grupo · s²ₚ: varianza combinada (pooled) · gl = n₁ + n₂ − 2",
       assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Distribución razonablemente simétrica en cada grupo, sin outliers muy influyentes.","Homogeneidad de varianzas entre grupos confirmada (ej. test de Levene) — si no lo está, usa la t de Welch en su lugar.","Ausencia de outliers extremos."],
+      effect:{name:"Diferencia de medias y d de Cohen / Hedges g", note:"Reporta la diferencia de medias con su IC 95%; Hedges g es preferible a d de Cohen en muestras pequeñas."},
       related:{id:"t_welch", label:"Opción recomendada por defecto (no exige varianzas iguales)"} },
 
     { id:"t_pareada", name:"t de Student para muestras pareadas", category:"parametrica", paradigm:"Paramétrica",
@@ -457,7 +464,17 @@
       formula:"t = "+frac("d̄","s_d / √n"),
       formulaNote:"d̄: media de las diferencias por pareja · s_d: desviación estándar de las diferencias · gl = n − 1",
       assumptions:["Variable dependiente cuantitativa.","Mismos sujetos medidos en dos condiciones (diseño pareado).","Las diferencias entre pares siguen una distribución aproximadamente normal.","Los pares son independientes entre sí."],
+      effect:{name:"Diferencia media de las parejas y dz de Cohen", note:"Reporta la diferencia media (post−pre) con su IC 95%, y dz (d de Cohen para medidas repetidas) como medida estandarizada."},
       related:{id:"wilcoxon_pareada", label:"Alternativa no paramétrica"} },
+
+    { id:"ancova", name:"ANCOVA (Análisis de Covarianza)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Modelo que compara un resultado posterior entre dos o más grupos ajustando por el valor basal (y otras covariables relevantes), en lugar de comparar el cambio bruto o los resultados de pruebas pareadas realizadas por separado dentro de cada grupo. En diseños pre-post con una única medición posterior, es la opción recomendada: aumenta la precisión estadística al eliminar la variabilidad explicada por el punto de partida de cada sujeto, y evita la falacia de comparar «un grupo mejoró de forma significativa y el otro no» como si eso demostrara una diferencia entre grupos.",
+      uses:["Comparar la reducción de la presión arterial entre un grupo de tratamiento y un grupo control, ajustando por el valor basal de cada paciente.","Comparar dos o más grupos en un resultado posterior a una intervención, controlando además por covariables como edad o centro."],
+      formula:"Y<sub>post</sub> = β₀ + β₁·grupo + β₂·Y<sub>basal</sub> + β₃·covariables + ε",
+      formulaNote:"β₁: efecto ajustado del grupo sobre el resultado posterior, controlando por el valor basal y las covariables incluidas.",
+      assumptions:["Variable dependiente (resultado posterior) cuantitativa.","Dos o más grupos, cada uno con una medición basal y una medición posterior por sujeto.","Relación lineal entre el valor basal (y otras covariables) y el resultado posterior.","Homogeneidad de las pendientes de regresión entre grupos —el efecto del valor basal es similar en todos los grupos— antes de interpretar el efecto principal del grupo.","Normalidad y homocedasticidad de los residuos del modelo.","Independencia de las observaciones."],
+      effect:{name:"Diferencia de medias ajustada (least-squares means) con IC 95%, y η²ₚ del efecto grupo", note:"La diferencia ajustada por el valor basal es más precisa e interpretable que la diferencia del cambio bruto entre grupos."},
+      related:{id:"anova_mixto", label:"Si hay más de una medición posterior (estructura longitudinal)"} },
 
     { id:"mann_whitney", name:"U de Mann-Whitney", category:"no_parametrica", paradigm:"No paramétrica",
       def:"Prueba no paramétrica que compara los rangos —no los valores brutos— de dos grupos independientes, evaluando si los valores de un grupo tienden a ser sistemáticamente mayores que los del otro. No es automáticamente una prueba de igualdad de medianas: solo puede interpretarse como comparación de localización o medianas cuando las distribuciones de ambos grupos tienen una forma y dispersión comparables; si difieren en forma o varianza, el resultado debe leerse como una comparación de distribuciones o de probabilidad de superioridad, no de medianas.",
@@ -465,6 +482,7 @@
       formula:"U₁ = n₁n₂ + "+frac("n₁(n₁+1)","2")+" − R₁",
       formulaNote:"n₁, n₂: tamaños de cada grupo · R₁: suma de rangos del grupo 1 · U = mín(U₁, U₂)",
       assumptions:["Variable dependiente al menos ordinal.","Dos grupos independientes.","No requiere normalidad.","Para interpretarlo como diferencia de medianas (y no solo de distribuciones/rangos) se necesita que ambos grupos tengan una forma y dispersión comparables — compruébalo visualmente (boxplot o violin plot) antes de redactar la conclusión en términos de medianas."],
+      effect:{name:"Probabilidad de superioridad, o correlación biserial por rangos (r)", note:"No reportes una «diferencia de medianas» sin más: usa la probabilidad de que un valor del grupo A supere a uno del grupo B, o r = Z/√n, con su IC 95% (bootstrap)."},
       related:{id:"t_welch", label:"Opción paramétrica si el objetivo es comparar medias"} },
 
     { id:"wilcoxon_una", name:"Wilcoxon de una muestra (rangos con signo)", category:"no_parametrica", paradigm:"No paramétrica",
@@ -473,6 +491,7 @@
       formula:"W = Σᵢ sign(dᵢ) · Rᵢ",
       formulaNote:"dᵢ = xᵢ − valor de referencia · Rᵢ: rango de |dᵢ|",
       assumptions:["Variable al menos ordinal.","Una sola muestra comparada con un valor de referencia.","Se recomienda que la distribución de las diferencias sea simétrica respecto a la mediana."],
+      effect:{name:"Mediana de las diferencias (Hodges-Lehmann) y r = Z/√n", note:"Reporta la mediana de las diferencias con su IC 95% junto con r como medida estandarizada."},
       related:{id:"t_una", label:"Versión paramétrica equivalente"} },
 
     { id:"wilcoxon_pareada", name:"Wilcoxon de rangos con signo (pareada)", category:"no_parametrica", paradigm:"No paramétrica",
@@ -481,6 +500,7 @@
       formula:"W = Σᵢ sign(dᵢ) · Rᵢ",
       formulaNote:"dᵢ: diferencia del par i (post − pre) · Rᵢ: rango de |dᵢ|",
       assumptions:["Variable al menos ordinal, o cuantitativa sin normalidad.","Datos pareados (mismos sujetos en dos condiciones).","Las diferencias son razonablemente simétricas alrededor de la mediana."],
+      effect:{name:"Mediana de las diferencias (Hodges-Lehmann) y r = Z/√n", note:"Reporta la mediana de las diferencias con su IC 95% junto con r como medida estandarizada."},
       related:{id:"t_pareada", label:"Versión paramétrica equivalente"} },
 
     { id:"anova_1f", name:"ANOVA de un factor (entre grupos)", category:"parametrica", paradigm:"Paramétrica",
@@ -489,6 +509,7 @@
       formula:"F = "+frac("MS_entre","MS_dentro")+" = "+frac("SC_entre /(k−1)","SC_dentro /(N−k)"),
       formulaNote:"k: número de grupos · N: tamaño muestral total · gl = (k−1, N−k)",
       assumptions:["Variable dependiente cuantitativa.","Más de dos grupos independientes.","Normalidad de la variable en cada grupo.","Homogeneidad de varianzas entre grupos.","Observaciones independientes."],
+      effect:{name:"Eta cuadrado parcial (η²ₚ) u omega cuadrado (ω²)", note:"ω² está menos sesgado que η²ₚ en muestras pequeñas. Si hay post-hoc, acompáñalo de las diferencias de medias e IC 95% por pareja."},
       related:{id:"kruskal_wallis", label:"Alternativa no paramétrica"} },
 
     { id:"anova_rm", name:"ANOVA de medidas repetidas", category:"parametrica", paradigm:"Paramétrica",
@@ -497,6 +518,7 @@
       formula:"F = "+frac("MS_tratamiento","MS_error"),
       formulaNote:"MS_error excluye la variabilidad entre sujetos, ya estimada aparte · requiere corrección si falla la esfericidad",
       assumptions:["Variable dependiente cuantitativa.","Mismos sujetos medidos en ≥ 3 condiciones o momentos.","Normalidad de las diferencias entre condiciones.","Esfericidad (test de Mauchly) o aplicar corrección de Greenhouse-Geisser."],
+      effect:{name:"Eta cuadrado parcial (η²ₚ) del efecto del tiempo", note:"Complementa con las medias por condición y su IC 95% ajustado por la correlación intra-sujeto."},
       related:{id:"friedman", label:"Alternativa no paramétrica"} },
 
     { id:"kruskal_wallis", name:"Kruskal-Wallis", category:"no_parametrica", paradigm:"No paramétrica",
@@ -505,6 +527,7 @@
       formula:"H = "+frac("12","N(N+1)")+" Σᵢ "+frac("Rᵢ²","nᵢ")+" − 3(N+1)",
       formulaNote:"N: tamaño muestral total · nᵢ: tamaño del grupo i · Rᵢ: suma de rangos del grupo i",
       assumptions:["Variable al menos ordinal.","Más de dos grupos independientes.","No requiere normalidad.","Se asume una forma de distribución similar entre grupos para interpretar diferencias de mediana."],
+      effect:{name:"Épsilon cuadrado (ε²), o eta cuadrado basado en H", note:"Cuantifica la variabilidad en los rangos explicada por el factor; complementa con las medianas e IQR por grupo."},
       related:{id:"anova_1f", label:"Versión paramétrica equivalente"} },
 
     { id:"friedman", name:"Friedman", category:"no_parametrica", paradigm:"No paramétrica",
@@ -513,6 +536,7 @@
       formula:"χ²_F = "+frac("12","N k(k+1)")+" Σⱼ Rⱼ² − 3N(k+1)",
       formulaNote:"N: número de sujetos · k: número de condiciones · Rⱼ: suma de rangos de la condición j",
       assumptions:["Variable al menos ordinal.","Mismos sujetos evaluados en ≥ 3 condiciones.","No requiere normalidad ni esfericidad.","Diseño de bloques completos (todos los sujetos pasan por todas las condiciones)."],
+      effect:{name:"W de Kendall (concordancia)", note:"Cuantifica el grado de concordancia entre condiciones; complementa con las medianas por condición."},
       related:{id:"anova_rm", label:"Versión paramétrica equivalente"} },
 
     { id:"dunnett", name:"Test de Dunnett", category:"parametrica", paradigm:"Paramétrica (post-hoc)",
@@ -521,6 +545,7 @@
       formula:"tᵢ = "+frac("x̄ᵢ − x̄_control", sqrt("MS_error (1/nᵢ + 1/n_control)")),
       formulaNote:"Se compara contra el valor crítico d_α de la distribución de Dunnett, no contra la t de Student estándar",
       assumptions:["Variable dependiente cuantitativa.","Tres o más grupos independientes, incluyendo un grupo control claramente definido.","Normalidad de los residuos en cada grupo.","Homogeneidad de varianzas entre grupos."],
+      effect:{name:"Diferencia de medias frente al control, con IC ajustado", note:"El IC de Dunnett ya está ajustado por comparaciones múltiples — repórtalo por cada grupo frente al control."},
       related:null },
 
     { id:"anova_2f", name:"ANOVA de dos vías (factorial)", category:"parametrica", paradigm:"Paramétrica",
@@ -529,6 +554,7 @@
       formula:"Y<sub>ijk</sub> = μ + α<sub>i</sub> + β<sub>j</sub> + (αβ)<sub>ij</sub> + ε<sub>ijk</sub>",
       formulaNote:"α_i, β_j: efectos principales de cada factor · (αβ)_ij: efecto de interacción · se obtiene un estadístico F para cada efecto",
       assumptions:["Variable dependiente cuantitativa.","Dos o más factores categóricos independientes entre sujetos.","Normalidad de los residuos.","Homogeneidad de varianzas entre las celdas del diseño.","Idealmente, tamaños de celda similares (diseño equilibrado)."],
+      effect:{name:"Eta cuadrado parcial (η²ₚ) por efecto principal y por la interacción", note:"Reporta η²ₚ para cada factor y para la interacción por separado."},
       related:{id:"anova_mixto", label:"Si además una de las variables se mide de forma repetida"} },
 
     { id:"anova_mixto", name:"ANOVA Mixto (grupos × condiciones / split-plot)", category:"parametrica", paradigm:"Paramétrica",
@@ -537,6 +563,7 @@
       formula:"Y<sub>ijk</sub> = μ + α<sub>i</sub> + π<sub>j(i)</sub> + β<sub>k</sub> + (αβ)<sub>ik</sub> + ε<sub>ijk</sub>",
       formulaNote:"α_i: efecto del grupo (entre-sujetos) · π_j(i): sujeto anidado en el grupo · β_k: efecto de la condición repetida (intra-sujetos) · (αβ)_ik: interacción grupo × condición",
       assumptions:["Variable dependiente cuantitativa.","Un factor entre-sujetos (grupos distintos) y un factor intra-sujetos (mismos sujetos en todas las condiciones).","Normalidad de los residuos.","Homogeneidad de varianzas entre grupos (test de Levene) y de las matrices de covarianza (M de Box).","Esfericidad del factor intra-sujetos (test de Mauchly), o aplicar corrección de Greenhouse-Geisser.","Sin datos faltantes ni estructura anidada adicional (en ese caso, usar un Modelo Mixto)."],
+      effect:{name:"Eta cuadrado parcial (η²ₚ) del grupo, del tiempo y de su interacción", note:"La interacción grupo × tiempo suele ser el estimando principal en este diseño — repórtala con prioridad sobre los efectos principales por separado."},
       related:{id:"mixed_model", label:"Alternativa robusta si hay datos faltantes o anidamiento"} },
 
     { id:"mixed_model", name:"Modelo Mixto (efectos fijos y aleatorios)", category:"parametrica", paradigm:"Modelo paramétrico avanzado",
@@ -545,6 +572,7 @@
       formula:"Y<sub>ij</sub> = X<sub>ij</sub>β + Z<sub>ij</sub>u<sub>i</sub> + ε<sub>ij</sub>",
       formulaNote:"β: efectos fijos · u_i: efectos aleatorios del sujeto/cluster i, con u_i ~ N(0,G) · ε_ij ~ N(0,σ²)",
       assumptions:["Variable dependiente cuantitativa (o distribución adecuada en su versión generalizada).","Estructura de datos anidada, jerárquica o de medidas repetidas.","Normalidad de los residuos y de los efectos aleatorios.","No requiere esfericidad ni diseño balanceado.","Tolera razonablemente los datos faltantes (bajo el supuesto MAR)."],
+      effect:{name:"Coeficientes con IC 95%, y R² marginal/condicional", note:"R² marginal (Nakagawa-Schielzeth): varianza explicada solo por los efectos fijos. R² condicional: incluyendo también los efectos aleatorios."},
       related:{id:"anova_mixto", label:"Versión clásica sin datos faltantes ni anidamiento"} },
 
     { id:"chi2", name:"Chi-cuadrado de independencia", category:"asociacion", paradigm:"No paramétrica",
@@ -553,6 +581,7 @@
       formula:"χ² = Σᵢ "+frac("(Oᵢ − Eᵢ)²","Eᵢ"),
       formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia",
       assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Frecuencias esperadas ≥ 5 en al menos el 80% de las celdas.","Si no se cumple, usar el test exacto de Fisher."],
+      effect:{name:"V de Cramér, u odds ratio/riesgo relativo si la tabla es 2×2", note:"En tablas 2×2, el odds ratio o el riesgo relativo con IC 95% son más informativos e interpretables que V de Cramér."},
       related:null },
 
     { id:"pearson", name:"Correlación de Pearson", category:"asociacion", paradigm:"Paramétrica",
@@ -561,6 +590,7 @@
       formula:"r = "+frac("Σ(xᵢ−x̄)(yᵢ−ȳ)", sqrt("Σ(xᵢ−x̄)² · Σ(yᵢ−ȳ)²")),
       formulaNote:"x̄, ȳ: medias de cada variable · r ∈ [−1, 1]",
       assumptions:["Ambas variables cuantitativas.","Relación lineal entre las variables.","Normalidad bivariada (o tamaño muestral grande).","Homocedasticidad y ausencia de outliers influyentes."],
+      effect:{name:"El propio coeficiente r, con IC 95%", note:"El IC se calcula mediante la transformación z de Fisher, no de forma simétrica alrededor de r."},
       related:{id:"spearman", label:"Alternativa no paramétrica"} },
 
     { id:"spearman", name:"Correlación de Spearman", category:"asociacion", paradigm:"No paramétrica",
@@ -569,6 +599,7 @@
       formula:"ρ = 1 − "+frac("6Σdᵢ²","n(n²−1)"),
       formulaNote:"dᵢ: diferencia entre los rangos de cada par de observaciones · n: número de pares",
       assumptions:["Ambas variables al menos ordinales.","Relación monótona (no necesariamente lineal).","No requiere normalidad.","Robusta ante outliers."],
+      effect:{name:"El propio coeficiente ρ, con IC 95% (bootstrap)", note:"A diferencia de Pearson, ρ no tiene una fórmula cerrada simple para el IC — se recomienda bootstrap."},
       related:{id:"pearson", label:"Versión paramétrica equivalente"} },
 
     { id:"reg_lineal_simple", name:"Regresión lineal simple", category:"regresion", paradigm:"Modelo predictivo",
@@ -577,6 +608,7 @@
       formula:"Y = β₀ + β₁X + ε &nbsp;&nbsp;&nbsp; β₁ = "+frac("Σ(xᵢ−x̄)(yᵢ−ȳ)","Σ(xᵢ−x̄)²"),
       formulaNote:"β₀: intercepto · β₁: pendiente · ε: error aleatorio",
       assumptions:["Variable dependiente cuantitativa continua.","Relación lineal entre X e Y.","Independencia y homocedasticidad de los residuos.","Normalidad de los residuos."],
+      effect:{name:"Pendiente (β₁) con IC 95%, y R²", note:"R² indica la proporción de varianza explicada; repórtalo junto con la pendiente, no en su lugar."},
       related:{id:"reg_lineal_multiple", label:"Extensión con más predictores"} },
 
     { id:"reg_lineal_multiple", name:"Regresión lineal múltiple", category:"regresion", paradigm:"Modelo predictivo",
@@ -585,6 +617,7 @@
       formula:"Y = β₀ + β₁X₁ + β₂X₂ + ⋯ + β<sub>p</sub>X<sub>p</sub> + ε",
       formulaNote:"β_p: coeficiente de cada predictor Xₚ, controlando por el resto de variables del modelo",
       assumptions:["Variable dependiente cuantitativa continua.","Relación lineal entre predictores y variable dependiente.","Independencia y homocedasticidad de los residuos.","Normalidad de los residuos.","Ausencia de multicolinealidad entre predictores (VIF < 10)."],
+      effect:{name:"Coeficientes con IC 95%, y R² ajustado", note:"El R² ajustado penaliza por el número de predictores, evitando sobrestimar el ajuste al añadir variables."},
       related:{id:"reg_lineal_simple", label:"Versión con un único predictor"} },
 
     { id:"reg_logistica", name:"Regresión logística", category:"regresion", paradigm:"Modelo predictivo",
@@ -593,6 +626,7 @@
       formula:"ln"+frac("p","1−p")+" = β₀ + β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>",
       formulaNote:"p: probabilidad del evento · p = 1 / (1 + e^−(β₀+β₁X₁+…))",
       assumptions:["Variable dependiente categórica binaria.","Independencia de las observaciones.","Relación lineal entre los predictores y el logit de la probabilidad.","Ausencia de multicolinealidad.","Tamaño muestral suficiente por predictor (regla práctica ≈10 eventos por variable)."],
+      effect:{name:"Odds ratio (exp(β)) con IC 95% por predictor", note:"Evita reportar solo el p-valor: el OR con su IC comunica la magnitud y precisión del efecto."},
       related:{id:"reg_lineal_multiple", label:"Ver también"} },
 
     { id:"logrank", name:"Test de Log-Rank (Mantel-Cox)", category:"supervivencia", paradigm:"No paramétrica",
@@ -601,6 +635,7 @@
       formula:"χ² = "+frac("(Σₜ(O₁ₜ − E₁ₜ))²","Σₜ Vₜ"),
       formulaNote:"O₁ₜ, E₁ₜ: eventos observados/esperados en el grupo 1 en el tiempo t · Vₜ: varianza del número de eventos",
       assumptions:["Variable de resultado: tiempo hasta un evento, con posibles datos censurados.","Riesgos proporcionales entre grupos a lo largo del tiempo.","La censura es independiente del pronóstico (no informativa).","Grupos definidos a priori (variable categórica)."],
+      effect:{name:"Hazard ratio aproximado, o diferencia de medianas de supervivencia", note:"El log-rank no estima un HR directamente — ajusta un modelo de Cox univariante sobre la misma variable de grupo para obtenerlo con IC 95%."},
       related:{id:"cox", label:"Extensión con más predictores"} },
 
     { id:"cox", name:"Regresión de Cox (riesgos proporcionales)", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
@@ -609,6 +644,7 @@
       formula:"h(t | X) = h₀(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
       formulaNote:"h₀(t): riesgo basal (no especificado) · HR = exp(β): razón de riesgos",
       assumptions:["Variable de resultado: tiempo hasta un evento, con datos censurados permitidos.","Riesgos proporcionales entre categorías de cada predictor (verificable con residuos de Schoenfeld).","Relación log-lineal entre predictores continuos y el riesgo.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores."],
+      effect:{name:"Hazard ratio (exp(β)) con IC 95% por predictor", note:"Verifica antes el supuesto de riesgos proporcionales (residuos de Schoenfeld); si falla para un predictor, considera estratificar por él."},
       related:{id:"logrank", label:"Versión bivariada simple (una sola variable de agrupación)"} }
   ];
   var TESTS_BY_ID = {};
@@ -639,8 +675,16 @@
         {label:"Un grupo frente a un valor de referencia teórico", next:"q_comp_1_sup"},
         {label:"Varios grupos frente a un único grupo control", next:"res_dunnett"},
         {label:"2 grupos entre sí", next:"q_comp_2_diseno"},
+        {label:"Dos o más grupos, cada uno medido antes y después de una intervención (diseño pre-post)", next:"q_prepost_momentos"},
         {label:"Más de 2 grupos, con un solo factor", next:"q_comp_mas_diseno"},
         {label:"Grupos Y condiciones a la vez (dos o más factores), o datos anidados/jerárquicos", next:"q_comp_factorial"}
+      ] },
+
+    q_prepost_momentos:{ type:"question", text:"¿Cuántas mediciones posteriores a la basal tienes por sujeto?",
+      help:"Con una sola medición posterior, comparar el cambio bruto entre grupos, o comparar «si el grupo A mejoró de forma significativa y el B no» dentro de cada grupo por separado, es un error metodológico frecuente: ninguna de las dos cosas equivale a una comparación directa entre grupos. El ANCOVA, ajustando por el valor basal, sí compara los grupos directamente y con mayor precisión.",
+      options:[
+        {label:"Una única medición posterior (dos momentos: basal y post)", next:"res_ancova"},
+        {label:"Varias mediciones posteriores a lo largo del tiempo (estructura longitudinal)", next:"res_prepost_longitudinal"}
       ] },
 
     q_comp_1_sup:{ type:"question", text:"¿La variable sigue una distribución normal en la población?",
@@ -731,6 +775,11 @@
       links:[ {id:"t_welch", note:"con bootstrap como análisis de sensibilidad"}, {id:"mann_whitney", note:"si el objetivo real es comparar distribuciones o rangos"} ],
       chart:{id:"boxplot", note:"Boxplot o violin plot con todos los puntos individuales visibles, dado el tamaño muestral pequeño o la presencia de outliers."} },
     res_t_pareada:{ type:"result", testId:"t_pareada", justification:"Comparas las mismas unidades en dos momentos o condiciones (diseño pareado) y las diferencias siguen una distribución normal: usa la t de Student para muestras pareadas.", chart:{id:"boxplot", note:"Boxplot de las diferencias por sujeto, o líneas que conecten cada par antes-después."} },
+    res_ancova:{ type:"result", testId:"ancova", justification:"Tienes dos o más grupos, cada uno con una medición basal y una única medición posterior: no compares el cambio bruto entre grupos ni los resultados de un test pareado dentro de cada grupo por separado —eso no equivale a una comparación entre grupos—. El ANCOVA, usando el valor basal (y otras covariables relevantes) como predictor, compara los grupos directamente y con mayor precisión estadística.", chart:{id:"scatter_plot", note:"Dispersión del valor basal frente al posterior coloreada por grupo, con las rectas ajustadas; o un gráfico de medias ajustadas (least-squares means) con IC 95% por grupo."} },
+    res_prepost_longitudinal:{ type:"guidance", title:"Con varias mediciones a lo largo del tiempo, analiza la interacción grupo × tiempo",
+      text:"Cuando hay más de una medición posterior a la basal, la pregunta relevante ya no es «¿mejoró cada grupo?» sino «¿difiere la trayectoria entre grupos?» —eso es la interacción grupo × tiempo—. No la sustituyas por pruebas pareadas separadas dentro de cada grupo, ni por comparar si un grupo alcanza significación y el otro no. Usa un ANOVA Mixto (grupos × condiciones) si no hay datos faltantes ni estructura anidada, o un Modelo Mixto si los hay.",
+      links:[ {id:"anova_mixto", note:"clásico, sin datos faltantes ni anidamiento"}, {id:"mixed_model", note:"con datos faltantes o estructura anidada/jerárquica"} ],
+      chart:{id:"interaction_plot", note:"Perfil de medias por grupo y momento — visualiza directamente si las trayectorias divergen entre grupos."} },
     res_wilcoxon_pareada:{ type:"result", testId:"wilcoxon_pareada", justification:"Tu diseño es pareado, pero las diferencias no siguen una distribución normal. La alternativa no paramétrica es la prueba de Wilcoxon de rangos con signo.", chart:{id:"boxplot", note:"Boxplot de las diferencias, o gráfico de líneas pareadas antes-después."} },
     res_anova_1f:{ type:"result", testId:"anova_1f", justification:"Comparas una variable cuantitativa entre más de dos grupos independientes y se cumplen normalidad y homocedasticidad: el ANOVA de un factor es la prueba recomendada.", chart:{id:"violin", note:"Violin plot o boxplot por grupo, señalando con post-hoc (Tukey) qué pares difieren."} },
     res_kruskal_wallis:{ type:"result", testId:"kruskal_wallis", justification:"Comparas más de dos grupos independientes sin cumplir los supuestos paramétricos. La alternativa no paramétrica es Kruskal-Wallis.", chart:{id:"violin", note:"Violin plot o boxplot por grupo; complementa con post-hoc de Dunn si procede."} },
@@ -1009,6 +1058,7 @@
     anova_rm:{ varTypes:["discreta","continua"], groups:"ge3", design:"pareadas", normality:true, homoscedasticity:false, sphericity:true, missingAllowed:false, designSwap:{id:"anova_1f", when:"independientes"} },
     friedman:{ varTypes:["ordinal","discreta","continua"], groups:"ge3", design:"pareadas", normality:false, homoscedasticity:false, missingAllowed:false, designSwap:{id:"kruskal_wallis", when:"independientes"} },
     dunnett:{ varTypes:["discreta","continua"], groups:"ge3", design:"independientes", normality:true, homoscedasticity:true },
+    ancova:{ varTypes:["discreta","continua"], groups:"any", design:"independientes", normality:true, homoscedasticity:true },
     anova_2f:{ varTypes:["discreta","continua"], groups:"any", design:"independientes", normality:true, homoscedasticity:true },
     anova_mixto:{ varTypes:["discreta","continua"], groups:"any", design:"pareadas", normality:true, homoscedasticity:true, sphericity:true, missingAllowed:false, designSwap:{id:"anova_2f", when:"independientes"} },
     mixed_model:{ varTypes:["discreta","continua"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
@@ -1130,6 +1180,12 @@
     return '<div class="req-block"><span class="req-title">Requisitos que deben verificarse antes de interpretar</span>'+
       '<ul class="assump-list">'+test.assumptions.map(function(a){ return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>'; }).join("")+'</ul></div>';
   }
+  function effectBlockHtml(test){
+    if(!test.effect) return "";
+    return '<div class="effect-box"><span class="alt-label">Tamaño del efecto recomendado</span>'+
+      '<span class="effect-name">'+escapeHtml(test.effect.name)+'</span>'+
+      '<p>'+escapeHtml(test.effect.note)+' Preséntalo siempre junto a su intervalo de confianza del 95% — el p-valor por sí solo no comunica la magnitud del efecto.</p></div>';
+  }
   function badgeRowHtml(test){
     var html = badge(test.category, test.paradigm);
     if(test.category !== "parametrica" && test.category !== "no_parametrica"){ html += badge(test.category, CATEGORY_LABEL[test.category]); }
@@ -1188,7 +1244,7 @@
           '<h2 class="result-name">'+escapeHtml(test.name)+'</h2>'+
           badgeRowHtml(test)+
           '<p class="result-just">'+escapeHtml(node.justification)+'</p>'+
-          altHtml + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
+          altHtml + effectBlockHtml(test) + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
           '<div class="result-actions">'+
             '<button class="btn btn-primary" id="wiz-view-detail" type="button">Ver en Diccionario<svg><use href="#i-arrow"/></svg></button>'+
             '<button class="btn btn-ghost" id="wiz-restart-2" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
@@ -1286,6 +1342,7 @@
       '<h4>¿Para qué sirve?</h4><ul class="uses-list">'+test.uses.map(function(u){return '<li>'+escapeHtml(u)+'</li>';}).join("")+'</ul>'+
       '<h4>Fórmula</h4><div class="formula-box">'+test.formula+'</div><p class="formula-note">'+escapeHtml(test.formulaNote)+'</p>'+
       '<h4>Requisitos / supuestos previos</h4><ul class="assump-list">'+test.assumptions.map(function(a){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>';}).join("")+'</ul>'+
+      (test.effect ? '<h4>Tamaño del efecto</h4><p><b>'+escapeHtml(test.effect.name)+'.</b> '+escapeHtml(test.effect.note)+' Preséntalo siempre con su IC 95%.</p>' : '')+
       relatedHtml;
   }
   function matchesSearch(hayFields, q){ if(!q) return true; q=q.toLowerCase(); return hayFields.join(" ").toLowerCase().indexOf(q)!==-1; }
