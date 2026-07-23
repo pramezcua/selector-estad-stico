@@ -674,6 +674,33 @@
       effect:{name:"Odds ratio (exp(β)) con IC 95%, por categoría y predictor", note:"Cada predictor tiene un OR distinto por cada categoría no-referencia — repórtalos todos, no solo uno."},
       related:{id:"reg_logistica_ordinal", label:"Si las categorías sí tienen un orden natural"} },
 
+    { id:"reg_poisson", name:"Regresión de Poisson", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo de regresión para una variable dependiente de conteo (número de eventos: 0, 1, 2…) que asume que la media y la varianza del conteo son iguales (equidispersión). Permite modelar el número esperado de eventos, o una tasa de eventos, en función de una o más variables predictoras.",
+      uses:["Modelar el número de caídas en el último año en función de la edad y la fragilidad.","Modelar el número de ingresos hospitalarios por paciente-año, usando el tiempo de seguimiento como offset."],
+      formula:"ln(μ) = β₀ + β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>",
+      formulaNote:"μ: número esperado de eventos · si modelas una tasa (eventos por tiempo o exposición), añade ln(tiempo de exposición) como offset —con coeficiente fijado a 1—, no como un predictor más.",
+      assumptions:["Variable dependiente de conteo (entero no negativo: 0, 1, 2…).","La media y la varianza del conteo son aproximadamente iguales (equidispersión) — la sobredispersión es muy frecuente en datos reales, compruébala antes de confiar en el modelo.","Independencia de las observaciones.","Relación log-lineal entre los predictores y la tasa esperada.","Ausencia de un exceso de ceros no explicado por el modelo."],
+      effect:{name:"Razón de tasas (rate ratio, exp(β)) con IC 95% por predictor", note:"exp(β) es el factor multiplicativo sobre la tasa esperada de eventos por cada unidad de incremento del predictor."},
+      related:{id:"reg_binomial_negativa", label:"Si hay sobredispersión (varianza > media)"} },
+
+    { id:"reg_binomial_negativa", name:"Regresión binomial negativa", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Extensión de la regresión de Poisson para variables de conteo con sobredispersión (varianza mayor que la media), añadiendo un parámetro adicional que modela esa dispersión extra en vez de asumirla igual a la media.",
+      uses:["Modelar el número de exacerbaciones respiratorias por paciente-año, cuando la varianza observada supera claramente a la media.","Cualquier variable de conteo donde un modelo de Poisson dé errores estándar sospechosamente pequeños (p-valores artificialmente significativos)."],
+      formula:"ln(μ) = β₀ + β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub> &nbsp;&nbsp; Var(Y) = μ + αμ²",
+      formulaNote:"α: parámetro de dispersión adicional (α=0 recupera el modelo de Poisson) · igual que en Poisson, usa un offset si modelas una tasa.",
+      assumptions:["Variable dependiente de conteo.","Sobredispersión presente (varianza &gt; media) — compruébalo comparando la deviance residual con sus grados de libertad, o con un test de razón de verosimilitud frente a Poisson.","Independencia de las observaciones.","Relación log-lineal entre los predictores y la tasa esperada."],
+      effect:{name:"Razón de tasas (rate ratio, exp(β)) con IC 95% por predictor", note:"Igual que en Poisson, pero con un IC más ancho que refleja honestamente la dispersión adicional real de los datos."},
+      related:{id:"reg_poisson", label:"Versión más simple si no hay sobredispersión"} },
+
+    { id:"reg_zeroinflated", name:"Modelo con exceso de ceros (ZIP / ZINB)", category:"regresion", paradigm:"Modelo predictivo",
+      def:"Modelo para variables de conteo con más ceros de los que un modelo de Poisson o binomial negativa esperarían, combinando dos procesos: uno que determina si el conteo es «estructuralmente» cero (ej. sujetos que nunca tienen el evento) y otro que modela el conteo en el resto de casos.",
+      uses:["Modelar el número de visitas a urgencias, cuando una parte relevante de la muestra nunca las usa por razones distintas al azar.","Cualquier variable de conteo con una proporción de ceros claramente mayor de la esperada bajo Poisson o binomial negativa."],
+      formula:"P(Y=0) = π + (1−π)·f(0) &nbsp;&nbsp; P(Y=k&gt;0) = (1−π)·f(k)",
+      formulaNote:"π: probabilidad de pertenecer al grupo de «ceros estructurales» · f: distribución de conteo (Poisson o binomial negativa) para el resto de casos — da lugar a los modelos ZIP y ZINB respectivamente.",
+      assumptions:["Variable dependiente de conteo con una proporción de ceros mayor de la esperada bajo Poisson/binomial negativa.","Justificación razonable de que existen dos procesos distintos generando los ceros (estructurales vs. muestreados por azar).","Independencia de las observaciones.","Tamaño muestral suficiente para estimar ambos componentes del modelo."],
+      effect:{name:"Razón de tasas (componente de conteo) y odds ratio (componente de ceros), ambos con IC 95%", note:"Repórtalos por separado: el modelo tiene dos conjuntos de coeficientes con interpretaciones distintas."},
+      related:{id:"reg_binomial_negativa", label:"Si el exceso de ceros ya queda explicado por la sobredispersión"} },
+
     { id:"logrank", name:"Test de Log-Rank (Mantel-Cox)", category:"supervivencia", paradigm:"No paramétrica",
       def:"Prueba no paramétrica que compara las curvas de supervivencia (tiempo hasta un evento) entre dos o más grupos, contrastando el número de eventos observados frente a los esperados en cada momento.",
       uses:["Comparar la supervivencia libre de progresión entre dos brazos de un ensayo clínico.","Comparar el tiempo hasta el alta hospitalaria entre grupos de tratamiento."],
@@ -820,7 +847,8 @@
       options:[
         {label:"Cuantitativa continua", next:"q_pred_npred"},
         {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"},
-        {label:"Categórica con más de dos niveles (nominal u ordinal)", next:"q_pred_cat_orden"}
+        {label:"Categórica con más de dos niveles (nominal u ordinal)", next:"q_pred_cat_orden"},
+        {label:"Recuento de eventos (0, 1, 2… ej. número de caídas, ingresos, exacerbaciones)", next:"q_pred_conteo_disp"}
       ] },
 
     q_pred_cat_orden:{ type:"question", text:"¿Las categorías de la variable a predecir tienen un orden natural?",
@@ -828,6 +856,14 @@
       options:[
         {label:"Sí, tienen un orden natural (ordinal)", next:"res_reg_logistica_ordinal"},
         {label:"No, no hay un orden claro (nominal)", next:"res_reg_multinomial"}
+      ] },
+
+    q_pred_conteo_disp:{ type:"question", text:"¿La varianza de los conteos es claramente mayor que la media (sobredispersión), o hay más ceros de los que un modelo de Poisson esperaría?",
+      help:"En un modelo de Poisson, la varianza debe ser igual a la media. Si la varianza observada es notablemente mayor (sobredispersión, muy habitual en datos reales) o hay un exceso de ceros que ni la sobredispersión explica, Poisson infravalora los errores estándar y puede producir significaciones falsas. Si estás modelando una tasa —eventos por tiempo de exposición o tamaño muestral—, recuerda incluir el logaritmo del tiempo/exposición como offset en el modelo, no como un predictor más.",
+      options:[
+        {label:"No, la varianza es similar a la media y no hay exceso de ceros", next:"res_reg_poisson"},
+        {label:"Sí, hay sobredispersión (varianza claramente mayor que la media)", next:"res_reg_binomial_negativa"},
+        {label:"Hay muchos más ceros de los esperados, incluso corrigiendo la sobredispersión", next:"res_reg_zeroinflated"}
       ] },
 
     q_pred_npred:{ type:"question", text:"¿Cuántas variables predictoras vas a usar?",
@@ -876,6 +912,9 @@
     res_reg_logistica:{ type:"result", testId:"reg_logistica", justification:"Quieres predecir una variable categórica binaria en función de una o más variables predictoras: usa la regresión logística.", chart:{id:"forest_plot", note:"Forest plot con las odds ratios (exp(β)) y sus IC95% por predictor."} },
     res_reg_logistica_ordinal:{ type:"result", testId:"reg_logistica_ordinal", justification:"Quieres predecir una variable categórica con más de dos niveles que sí tienen un orden natural: usa la regresión logística ordinal, que aprovecha ese orden en vez de tratar las categorías como si no tuvieran relación entre sí.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios proporcionales (exp(β)) y sus IC95% por predictor."} },
     res_reg_multinomial:{ type:"result", testId:"reg_multinomial", justification:"Quieres predecir una variable categórica con más de dos niveles sin un orden claro: usa la regresión multinomial, que estima la probabilidad de cada categoría frente a una de referencia.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios (exp(β)) por categoría y predictor, frente a la categoría de referencia."} },
+    res_reg_poisson:{ type:"result", testId:"reg_poisson", justification:"Quieres predecir un recuento de eventos y la varianza es similar a la media, sin exceso de ceros: usa la regresión de Poisson. Si estás modelando una tasa (eventos por tiempo o exposición), incluye el logaritmo del tiempo como offset.", chart:{id:"forest_plot", note:"Forest plot con las razones de tasas (rate ratios, exp(β)) y sus IC95% por predictor."} },
+    res_reg_binomial_negativa:{ type:"result", testId:"reg_binomial_negativa", justification:"Quieres predecir un recuento de eventos, pero la varianza es claramente mayor que la media (sobredispersión): usa la regresión binomial negativa en vez de Poisson, que subestimaría los errores estándar y produciría significaciones falsas.", chart:{id:"forest_plot", note:"Forest plot con las razones de tasas (rate ratios, exp(β)) y sus IC95% por predictor."} },
+    res_reg_zeroinflated:{ type:"result", testId:"reg_zeroinflated", justification:"Tu variable de conteo tiene más ceros de los que un modelo de Poisson o binomial negativa esperarían: usa un modelo con exceso de ceros (ZIP o ZINB), que modela por separado la probabilidad de un cero estructural y el conteo en el resto de casos.", chart:{id:"forest_plot", note:"Forest plot con los coeficientes de ambos componentes del modelo (conteo y exceso de ceros) por separado."} },
     res_reg_diagnostico_alerta:{ type:"guidance", title:"Revisa los diagnósticos antes de interpretar el modelo",
       text:"Un modelo con residuos problemáticos (no lineales, heterocedásticos, no normales) o con observaciones muy influyentes puede dar coeficientes sesgados o intervalos de confianza poco fiables. Antes de interpretar los resultados, valora: transformar la variable dependiente o algún predictor (ver Transformaciones en el Diccionario), usar errores estándar robustos si solo falla la homocedasticidad, investigar o justificar la exclusión de observaciones muy influyentes (distancia de Cook), o reducir el número de predictores si hay multicolinealidad severa (VIF > 10).",
       links:[ {id:"reg_lineal_simple", note:"si finalmente decides continuar con un único predictor"}, {id:"reg_lineal_multiple", note:"si finalmente decides continuar con varios predictores"} ],
@@ -1157,6 +1196,9 @@
     reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_logistica_ordinal:{ varTypes:["ordinal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_multinomial:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    reg_poisson:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false, overdispersionSensitive:true },
+    reg_binomial_negativa:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    reg_zeroinflated:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     logrank:{ varTypes:["tiempo_evento"], groups:"any", design:"independientes", normality:false, homoscedasticity:false },
     cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false }
   };
@@ -1215,6 +1257,15 @@
 
     if(req.normality && a.n && a.n < 30 && a.normal !== "si"){
       violations.push({sev:"warning", title:"Muestra pequeña sin normalidad confirmada", detail:"Con n = "+a.n+" y sin confirmar normalidad, el Teorema Central del Límite no garantiza la validez de esta prueba paramétrica."});
+    }
+
+    if(req.overdispersionSensitive){
+      if(a.overdispersion === "si"){
+        violations.push({sev:"error", title:"Sobredispersión presente", detail:"La regresión de Poisson asume que la varianza es igual a la media; con sobredispersión, subestima los errores estándar y produce p-valores e IC falsamente estrechos. Usa una regresión binomial negativa en su lugar."});
+        swap = "reg_binomial_negativa";
+      } else if(a.overdispersion === "no_se"){
+        violations.push({sev:"warning", title:"Sobredispersión sin verificar", detail:"Compruébala comparando la deviance residual con sus grados de libertad, o con un test de razón de verosimilitud frente a la binomial negativa, antes de confiar en los errores estándar de Poisson."});
+      }
     }
 
     if(!swap){
@@ -1586,7 +1637,7 @@
   /* ============================================================
      12. AUDITOR / EVALUADOR DE MODELOS (Pestaña 4)
   ============================================================ */
-  var auditAnswers = { testId:"anova_1f", varType:"continua", groups:"ge3", design:"independientes", normal:"si", homosced:"si", sphericity:"si", missingRM:"no", n:"" };
+  var auditAnswers = { testId:"anova_1f", varType:"continua", groups:"ge3", design:"independientes", normal:"si", homosced:"si", sphericity:"si", missingRM:"no", overdispersion:"no", n:"" };
   var auditResult = null;
 
   var CHIP_GROUPS = {
@@ -1596,7 +1647,8 @@
     normal:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
     homosced:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
     sphericity:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
-    missingRM:[{v:"no",l:"No"},{v:"si",l:"Sí"}]
+    missingRM:[{v:"no",l:"No"},{v:"si",l:"Sí"}],
+    overdispersion:[{v:"no",l:"No"},{v:"si",l:"Sí"},{v:"no_se",l:"No lo sé"}]
   };
   function chipGroupHtml(field, label){
     return '<div class="field-group"><label class="field-label">'+label+'</label><div class="chip-field">'+CHIP_GROUPS[field].map(function(o){
@@ -1640,6 +1692,7 @@
         chipGroupHtml("homosced","¿Cumplen homocedasticidad (varianzas homogéneas)?")+
         (auditAnswers.design==="pareadas" ? chipGroupHtml("sphericity","¿Se cumple esfericidad? (solo si comparas ≥3 condiciones repetidas)") : "")+
         (auditAnswers.design==="pareadas" ? chipGroupHtml("missingRM","¿Tienes datos faltantes en las medidas repetidas?") : "")+
+        (REQUIREMENTS[auditAnswers.testId] && REQUIREMENTS[auditAnswers.testId].overdispersionSensitive ? chipGroupHtml("overdispersion","¿Hay sobredispersión (la varianza de los conteos es claramente mayor que la media)?") : "")+
         '<button id="audit-run" type="button" class="btn btn-invalid" style="margin-top:.5rem;">Diagnosticar</button>'+
       '</div>';
 
