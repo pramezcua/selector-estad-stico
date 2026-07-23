@@ -715,9 +715,54 @@
       uses:["Estimar el efecto de varios factores de riesgo sobre el tiempo hasta un evento clínico, ajustando por covariables.","Calcular hazard ratios ajustados en un estudio de cohortes."],
       formula:"h(t | X) = h₀(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
       formulaNote:"h₀(t): riesgo basal (no especificado) · HR = exp(β): razón de riesgos",
-      assumptions:["Variable de resultado: tiempo hasta un evento, con datos censurados permitidos.","Riesgos proporcionales entre categorías de cada predictor (verificable con residuos de Schoenfeld).","Relación log-lineal entre predictores continuos y el riesgo.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores."],
-      effect:{name:"Hazard ratio (exp(β)) con IC 95% por predictor", note:"Verifica antes el supuesto de riesgos proporcionales (residuos de Schoenfeld); si falla para un predictor, considera estratificar por él."},
-      related:{id:"logrank", label:"Versión bivariada simple (una sola variable de agrupación)"} }
+      assumptions:["Variable de resultado: tiempo hasta un evento, con datos censurados permitidos.","Riesgos proporcionales entre categorías de cada predictor (verificable con residuos de Schoenfeld).","Relación log-lineal entre predictores continuos y el riesgo —revisa la forma funcional con splines si sospechas no linealidad.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores.","Número de eventos suficiente por predictor (regla práctica ≈10 eventos por variable, igual que en regresión logística) — con pocos eventos, los coeficientes son inestables."],
+      effect:{name:"Hazard ratio (exp(β)) con IC 95% por predictor", note:"Verifica antes el supuesto de riesgos proporcionales (residuos de Schoenfeld); si falla para un predictor, considera estratificar por él o dejar que su efecto varíe con el tiempo."},
+      related:{id:"logrank", label:"Versión bivariada simple (una sola variable de agrupación)"} },
+
+    { id:"cox_estratificado", name:"Cox estratificado", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
+      def:"Extensión del modelo de Cox que permite que una variable categórica —que no cumple el supuesto de riesgos proporcionales, o que actúa como factor de ajuste sin ser de interés directo— tenga su propia función de riesgo basal en cada estrato, mientras el resto de variables mantienen el mismo efecto en todos los estratos.",
+      uses:["Ajustar por centro hospitalario cuando el riesgo basal varía mucho entre centros, sin que el centro sea la variable de interés.","Manejar una variable categórica que no cumple riesgos proporcionales sin tener que excluirla del modelo."],
+      formula:"h<sub>k</sub>(t | X) = h<sub>0k</sub>(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
+      formulaNote:"k: cada estrato de la variable de estratificación · h₀ₖ(t): riesgo basal propio de cada estrato · los coeficientes β se estiman en común para todos los estratos.",
+      assumptions:["Variable de resultado: tiempo hasta un evento, con censura permitida.","La variable estratificada no cumple riesgos proporcionales, o no interesa estimar su propio HR (al estratificar, no se obtiene uno para ella).","Riesgos proporcionales para el resto de variables del modelo.","Eventos suficientes dentro de cada estrato para estimar su riesgo basal."],
+      effect:{name:"Hazard ratio (exp(β)) con IC 95% por predictor no estratificado", note:"La variable de estratificación no produce HR propio — solo se controla su efecto, no se cuantifica."},
+      related:{id:"cox", label:"Versión sin estratificar (si todas las variables cumplen riesgos proporcionales)"} },
+
+    { id:"cox_tiempo_variable", name:"Cox con covariables dependientes del tiempo", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
+      def:"Extensión del modelo de Cox que permite que el valor de una covariable —o su efecto sobre el riesgo— cambie a lo largo del tiempo de seguimiento, en vez de asumir que se mide una única vez al inicio.",
+      uses:["Modelar el efecto de un biomarcador medido repetidamente durante el seguimiento, en vez de solo su valor basal.","Modelar un tratamiento iniciado después del comienzo del seguimiento, evitando el sesgo de tiempo inmortal."],
+      formula:"h(t | X(t)) = h₀(t) · exp(β₁X₁(t) + ⋯ + β<sub>p</sub>X<sub>p</sub>(t))",
+      formulaNote:"X(t): el valor de la covariable puede depender del tiempo t · requiere reestructurar los datos en formato de intervalos (inicio-fin) por sujeto.",
+      assumptions:["Variable de resultado: tiempo hasta un evento, con censura permitida.","Al menos una covariable cuyo valor o efecto cambia a lo largo del seguimiento.","Datos estructurados en formato de intervalos (inicio-fin) por sujeto y periodo.","Evita el sesgo de tiempo inmortal: no asignes retrospectivamente un tratamiento a un periodo anterior a su inicio real."],
+      effect:{name:"Hazard ratio dependiente del tiempo (exp(β)) con IC 95%", note:"Si el efecto cambia con el tiempo, considera reportarlo en distintas ventanas temporales en vez de un único HR promedio."},
+      related:{id:"cox", label:"Versión con covariables medidas una única vez al inicio"} },
+
+    { id:"riesgos_causa_especifica", name:"Riesgos causa-específicos (competitivos)", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
+      def:"Extensión de Cox para contextos con eventos competitivos, que modela el riesgo instantáneo del evento de interés únicamente entre los sujetos que aún podrían experimentarlo, censurando a quienes sufren el evento competitivo. Responde a una pregunta etiológica: qué factores aceleran o retrasan el evento entre quienes siguen en riesgo de él.",
+      uses:["Estudiar los factores asociados a la recaída de un cáncer, censurando a los pacientes que fallecen por otras causas antes de recaer.","Analizar mecanismos biológicos de un evento cuando existe un evento competitivo que compite por el mismo sujeto."],
+      formula:"h<sub>causa</sub>(t | X) = h<sub>0,causa</sub>(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
+      formulaNote:"Se ajusta igual que un Cox estándar, tratando el evento competitivo como censura — válido para «¿qué acelera este evento entre quienes podrían tenerlo?», pero el HR no predice directamente la incidencia acumulada real en la población (para eso, ver Fine-Gray).",
+      assumptions:["Variable de resultado: tiempo hasta el evento de interés, con al menos un evento competitivo identificado.","Riesgos proporcionales para el evento de interés (residuos de Schoenfeld).","Independencia de las observaciones.","El evento competitivo se trata como censura — válido para preguntas etiológicas, no para predecir incidencia real en la población."],
+      effect:{name:"Hazard ratio causa-específico (exp(β)) con IC 95% por predictor", note:"No lo interpretes como el efecto sobre la probabilidad real de sufrir el evento en la población —para eso usa Fine-Gray."},
+      related:{id:"fine_gray", label:"Si el interés es la probabilidad real (incidencia acumulada) en la población"} },
+
+    { id:"fine_gray", name:"Modelo de Fine-Gray (riesgos competitivos)", category:"supervivencia", paradigm:"Modelo de riesgos proporcionales",
+      def:"Modelo de riesgos competitivos que modela directamente la función de incidencia acumulada del evento de interés, manteniendo en el conjunto de riesgo a los sujetos que ya sufrieron el evento competitivo. Responde a una pregunta predictiva: qué factores se asocian con la probabilidad real observada de que ocurra el evento, teniendo en cuenta que el evento competitivo reduce quiénes pueden experimentarlo.",
+      uses:["Predecir la probabilidad real de recaída de un paciente, considerando que la muerte por otras causas reduce la población en riesgo de recaer.","Construir un modelo de predicción de riesgo clínico cuando hay eventos competitivos relevantes."],
+      formula:"h̃(t | X) = h̃₀(t) · exp(β₁X₁ + ⋯ + β<sub>p</sub>X<sub>p</sub>)",
+      formulaNote:"h̃(t): riesgo subdistribucional — los sujetos que sufren el evento competitivo permanecen en el conjunto de riesgo (con peso decreciente), por lo que el modelo refleja la incidencia acumulada real.",
+      assumptions:["Variable de resultado: tiempo hasta el evento de interés, con al menos un evento competitivo identificado.","Riesgos subdistribucionales proporcionales a lo largo del tiempo.","Independencia de la censura respecto al pronóstico.","Adecuado cuando el objetivo es predictivo (incidencia acumulada real), no puramente etiológico."],
+      effect:{name:"Sub-hazard ratio (SHR) con IC 95% por predictor", note:"El SHR se interpreta en términos de la incidencia acumulada real observada, a diferencia del HR causa-específico."},
+      related:{id:"riesgos_causa_especifica", label:"Si el interés es etiológico (mecanismo), no predictivo"} },
+
+    { id:"superv_parametrica", name:"Modelos paramétricos de supervivencia", category:"supervivencia", paradigm:"Modelo paramétrico",
+      def:"Modelos que, a diferencia de Cox (semi-paramétrico), asumen una forma paramétrica concreta para la distribución del tiempo hasta el evento (Weibull, exponencial, log-normal…), permitiendo estimar directamente la función de riesgo y el tiempo mediano de supervivencia, no solo hazard ratios relativos.",
+      uses:["Estimar el tiempo mediano de supervivencia esperado, no solo comparar riesgos relativos entre grupos.","Extrapolar la curva de supervivencia más allá del periodo de seguimiento observado (frecuente en evaluaciones económicas en salud)."],
+      formula:"S(t) = exp(−(t/λ)<sup>γ</sup>) &nbsp;&nbsp; (ejemplo: distribución de Weibull)",
+      formulaNote:"λ: parámetro de escala · γ: parámetro de forma (γ=1 recupera el modelo exponencial, riesgo constante) · a diferencia de Cox, se especifica una distribución completa para el tiempo hasta el evento.",
+      assumptions:["Variable de resultado: tiempo hasta un evento, con censura permitida.","La distribución elegida (Weibull, exponencial, log-normal…) se ajusta razonablemente a los datos observados — compruébalo gráficamente.","Independencia de las observaciones.","Número de eventos suficiente para estimar los parámetros de la distribución con precisión."],
+      effect:{name:"Tiempo de aceleración (time ratio) o hazard ratio según la parametrización, con IC 95%", note:"En modelos de tiempo de fallo acelerado (AFT), el coeficiente se interpreta como un factor multiplicativo sobre el tiempo hasta el evento, no sobre el riesgo instantáneo."},
+      related:{id:"cox", label:"Versión semi-paramétrica (no asume una distribución concreta)"} }
   ];
   var TESTS_BY_ID = {};
   TESTS.forEach(function(t){ TESTS_BY_ID[t.id] = t; });
@@ -732,7 +777,7 @@
         {label:"Comparar grupos o condiciones", next:"q_comp_var_tipo"},
         {label:"Analizar la relación o asociación entre variables", next:"q_asoc_tipo"},
         {label:"Predecir o modelar un resultado", next:"q_pred_tipo"},
-        {label:"Analizar el tiempo hasta un evento (supervivencia)", next:"q_surv_tipo"}
+        {label:"Analizar el tiempo hasta un evento (supervivencia)", next:"q_surv_competitivo"}
       ] },
 
     q_comp_var_tipo:{ type:"question", text:"¿Qué tipo de variable estás comparando entre los grupos?",
@@ -877,8 +922,34 @@
       help:"Revisa conjuntamente: linealidad y homocedasticidad de los residuos (gráfico de residuos vs. ajustados), normalidad aproximada de los residuos (Q-Q plot), observaciones influyentes, y multicolinealidad entre predictores (VIF > 10 es motivo de alerta). No decidas a partir de un único p-valor de normalidad.",
       options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_reg_lineal_multiple"}, {label:"No, o lo desconozco", next:"res_reg_diagnostico_alerta"} ] },
 
+    q_surv_competitivo:{ type:"question", text:"¿Existen eventos competitivos? (otro evento que impide observar el de interés, ej. muerte por otra causa antes de la recaída que estudias)",
+      help:"Un evento competitivo hace que el sujeto ya no pueda experimentar el evento de interés. Tratarlo como censura estándar en Kaplan-Meier o Cox sobreestima sistemáticamente el riesgo del evento de interés.",
+      options:[
+        {label:"No, no hay eventos competitivos relevantes", next:"q_surv_tipo"},
+        {label:"Sí, hay uno o más eventos competitivos", next:"q_surv_competitivo_enfoque"}
+      ] },
+
+    q_surv_competitivo_enfoque:{ type:"question", text:"¿Cuál es tu interés principal?",
+      help:"Riesgos causa-específicos: qué acelera o retrasa el evento entre quienes aún podrían tenerlo (pregunta etiológica). Fine-Gray: la probabilidad real observada del evento en la población, considerando que el evento competitivo reduce quién sigue en riesgo (pregunta predictiva).",
+      options:[
+        {label:"Entender el mecanismo: el riesgo entre quienes aún podrían experimentar el evento", next:"res_riesgos_causa_especifica"},
+        {label:"Predecir la probabilidad real (incidencia acumulada) del evento en la población", next:"res_fine_gray"}
+      ] },
+
     q_surv_tipo:{ type:"question", text:"¿Qué quieres analizar sobre el tiempo hasta un evento?",
-      options:[ {label:"Comparar curvas de supervivencia entre grupos", next:"res_logrank"}, {label:"Modelar el efecto de varias variables sobre el riesgo", next:"res_cox"} ] },
+      options:[
+        {label:"Comparar curvas de supervivencia entre grupos", next:"res_logrank"},
+        {label:"Modelar el efecto de varias variables sobre el riesgo", next:"q_surv_cox_supuestos"},
+        {label:"Estimar directamente el tiempo mediano de supervivencia o extrapolar la curva más allá del seguimiento", next:"res_superv_parametrica"}
+      ] },
+
+    q_surv_cox_supuestos:{ type:"question", text:"¿Se cumple el supuesto de riesgos proporcionales para todas las variables del modelo?",
+      help:"Compruébalo con los residuos de Schoenfeld antes de interpretar un único hazard ratio por variable — un HR constante no tiene sentido si el efecto real cambia con el tiempo.",
+      options:[
+        {label:"Sí, se cumple para todas las variables", next:"res_cox"},
+        {label:"Falla para una variable categórica que no es el interés principal (ej. centro, sexo)", next:"res_cox_estratificado"},
+        {label:"El efecto de una variable cambia claramente a lo largo del tiempo", next:"res_cox_tiempo_variable"}
+      ] },
 
     res_t_una:{ type:"result", testId:"t_una", justification:"Comparas una única muestra cuantitativa frente a un valor de referencia y tus datos cumplen el supuesto de normalidad, por lo que corresponde la prueba paramétrica t de Student de una muestra.", chart:{id:"boxplot", note:"Boxplot de la muestra con una línea de referencia horizontal en μ₀."} },
     res_wilcoxon_una:{ type:"result", testId:"wilcoxon_una", justification:"Comparas una única muestra frente a un valor de referencia, pero no se cumple el supuesto de normalidad. La alternativa no paramétrica es la prueba de Wilcoxon de una muestra.", chart:{id:"boxplot", note:"Boxplot con una línea de referencia horizontal en la mediana teórica."} },
@@ -931,8 +1002,13 @@
       links:[ {id:"anova_mixto", note:"con corrección de Greenhouse-Geisser"}, {id:"mixed_model", note:"alternativa robusta sin estos supuestos"} ],
       chart:{id:"interaction_plot", note:"Sigue siendo la visualización clave mientras decides cómo tratar el incumplimiento de supuestos."} },
     res_mixed_model:{ type:"result", testId:"mixed_model", justification:"Tus datos combinan grupos y condiciones repetidas con estructura anidada/jerárquica o datos faltantes: un modelo mixto de efectos fijos y aleatorios es la herramienta adecuada.", chart:{id:"interaction_plot", note:"Perfil de medias estimadas por el modelo, con las trayectorias individuales de cada sujeto en segundo plano."} },
-    res_logrank:{ type:"result", testId:"logrank", justification:"Quieres comparar la probabilidad de supervivencia (tiempo hasta un evento) entre grupos definidos a priori: usa el test de Log-Rank sobre las curvas de Kaplan-Meier.", chart:{id:"kaplan_meier", note:"Curvas de Kaplan-Meier por grupo con el número de sujetos en riesgo bajo el eje temporal."} },
-    res_cox:{ type:"result", testId:"cox", justification:"Quieres modelar el efecto de una o más variables sobre el riesgo de que ocurra un evento a lo largo del tiempo: usa la regresión de Cox de riesgos proporcionales.", chart:{id:"forest_plot", note:"Forest plot con los hazard ratios (HR) y sus IC95% por variable del modelo."} },
+    res_logrank:{ type:"result", testId:"logrank", justification:"Quieres comparar la probabilidad de supervivencia (tiempo hasta un evento) entre grupos definidos a priori, sin eventos competitivos relevantes: usa el test de Log-Rank sobre las curvas de Kaplan-Meier.", chart:{id:"kaplan_meier", note:"Curvas de Kaplan-Meier por grupo con el número de sujetos en riesgo bajo el eje temporal."} },
+    res_cox:{ type:"result", testId:"cox", justification:"Quieres modelar el efecto de una o más variables sobre el riesgo de que ocurra un evento a lo largo del tiempo, y se cumple el supuesto de riesgos proporcionales para todas ellas: usa la regresión de Cox de riesgos proporcionales.", chart:{id:"forest_plot", note:"Forest plot con los hazard ratios (HR) y sus IC95% por variable del modelo."} },
+    res_cox_estratificado:{ type:"result", testId:"cox_estratificado", justification:"Una variable categórica no cumple riesgos proporcionales, pero no es tu interés principal (es un factor de ajuste, ej. centro): estratifica por ella en vez de excluirla o forzar un HR que no tiene sentido para ella.", chart:{id:"forest_plot", note:"Forest plot con los HR del resto de variables; la variable estratificada no aparece con un HR propio."} },
+    res_cox_tiempo_variable:{ type:"result", testId:"cox_tiempo_variable", justification:"El efecto de una variable cambia claramente a lo largo del seguimiento: usa un modelo de Cox con esa covariable dependiente del tiempo, en vez de asumir un único HR constante que no refleja la realidad.", chart:{id:"forest_plot", note:"Forest plot con los HR por ventana temporal, o una curva del HR estimado a lo largo del tiempo."} },
+    res_riesgos_causa_especifica:{ type:"result", testId:"riesgos_causa_especifica", justification:"Hay eventos competitivos y tu interés es etiológico (qué acelera el evento entre quienes aún podrían tenerlo): usa el enfoque de riesgos causa-específicos, tratando el evento competitivo como censura.", chart:{id:"kaplan_meier", note:"Curvas de incidencia acumulada específicas por causa, mostrando ambos eventos (de interés y competitivo) por separado."} },
+    res_fine_gray:{ type:"result", testId:"fine_gray", justification:"Hay eventos competitivos y tu interés es predictivo (la probabilidad real del evento en la población): usa el modelo de Fine-Gray, que mantiene en el conjunto de riesgo a quienes ya sufrieron el evento competitivo.", chart:{id:"kaplan_meier", note:"Curvas de incidencia acumulada (no de supervivencia 1−S(t)) por grupo, sumando correctamente hasta la proporción total de eventos."} },
+    res_superv_parametrica:{ type:"result", testId:"superv_parametrica", justification:"Quieres estimar directamente el tiempo mediano de supervivencia o extrapolar la curva más allá del periodo observado, no solo comparar riesgos relativos: usa un modelo paramétrico de supervivencia (Weibull, exponencial, log-normal…).", chart:{id:"kaplan_meier", note:"Curva de Kaplan-Meier observada superpuesta a la curva ajustada por el modelo paramétrico, para valorar el ajuste."} },
 
     res_guidance_mixta:{ type:"guidance", title:"No se trata de una correlación clásica",
       text:"Cuando una variable es categórica y la otra cuantitativa, no se usa un coeficiente de correlación estándar. Si la variable categórica tiene dos niveles, trátalo como una comparación de dos grupos. Si tiene tres o más niveles, trátalo como una comparación de varios grupos.",
@@ -1200,7 +1276,12 @@
     reg_binomial_negativa:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_zeroinflated:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     logrank:{ varTypes:["tiempo_evento"], groups:"any", design:"independientes", normality:false, homoscedasticity:false },
-    cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false }
+    cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    cox_estratificado:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    cox_tiempo_variable:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    riesgos_causa_especifica:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    fine_gray:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    superv_parametrica:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false }
   };
   var AUDIT_TEST_IDS = Object.keys(REQUIREMENTS);
 
