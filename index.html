@@ -148,6 +148,8 @@
   .req-block .req-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.6rem; }
 
   .btn{ border-radius:999px; padding:.7rem 1.3rem; font-size:.9rem; font-weight:700; cursor:pointer; border:1.5px solid transparent; display:inline-flex; align-items:center; gap:.45rem; transition:opacity .15s ease, background .15s ease; }
+  .btn svg{ width:16px; height:16px; flex:0 0 16px; }
+  .related-btn svg, .guidance-link svg{ width:15px; height:15px; flex:0 0 15px; }
   .btn-primary{ background:var(--accent); color:#fff; } .btn-primary:hover{ opacity:.9; }
   .btn-invalid{ background:var(--invalid); color:#fff; } .btn-invalid:hover{ opacity:.9; }
   .btn-ghost{ background:transparent; border-color:var(--border); color:var(--text); } .btn-ghost:hover{ border-color:var(--accent); color:var(--accent); }
@@ -433,13 +435,21 @@
       assumptions:["Variable dependiente cuantitativa continua.","Observaciones independientes entre sí.","La variable sigue una distribución aproximadamente normal (o n ≥ 30 por el TCL)."],
       related:{id:"wilcoxon_una", label:"Alternativa no paramétrica"} },
 
-    { id:"t_independiente", name:"t de Student para muestras independientes", category:"parametrica", paradigm:"Paramétrica",
-      def:"Prueba paramétrica que compara las medias de una variable cuantitativa entre dos grupos independientes, para determinar si la diferencia observada es estadísticamente significativa.",
-      uses:["Comparar el efecto de un fármaco frente a un placebo en dos grupos distintos de pacientes.","Comparar el rendimiento académico entre dos metodologías de enseñanza aplicadas a grupos diferentes."],
+    { id:"t_welch", name:"t de Welch (varianzas desiguales)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Prueba paramétrica que compara las medias de una variable cuantitativa entre dos grupos independientes sin asumir que sus varianzas sean iguales. Es la opción recomendada por defecto en la práctica estadística actual para comparar dos medias, incluso cuando las varianzas parecen similares: si de verdad lo son, Welch y la t clásica dan resultados casi idénticos, pero si no lo son, solo Welch mantiene el error Tipo I controlado.",
+      uses:["Comparar el efecto de un fármaco frente a un placebo en dos grupos, sin necesidad de verificar antes la igualdad de varianzas.","Comparar dos grupos con tamaños muestrales distintos, donde la t clásica es más sensible a la heterogeneidad de varianzas."],
+      formula:"t = "+frac("x̄₁ − x̄₂", sqrt("s₁²/n₁ + s₂²/n₂")),
+      formulaNote:"Los grados de libertad se calculan con la aproximación de Welch-Satterthwaite (un valor no entero que penaliza la heterogeneidad de varianzas), no como n₁+n₂−2.",
+      assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Distribución razonablemente simétrica en cada grupo, sin outliers claramente influyentes — evalúa esto de forma conjunta (Q-Q plot, histograma, tamaño muestral), no con una única prueba de normalidad.","No exige varianzas iguales entre grupos.","Con asimetría grave, outliers muy influyentes o muestras muy pequeñas por grupo, valora métodos robustos o bootstrap como análisis de sensibilidad."],
+      related:{id:"t_independiente", label:"Versión con varianzas combinadas (solo si están confirmadas como similares)"} },
+
+    { id:"t_independiente", name:"t de Student para muestras independientes (varianzas combinadas)", category:"parametrica", paradigm:"Paramétrica",
+      def:"Prueba paramétrica que compara las medias de una variable cuantitativa entre dos grupos independientes asumiendo varianzas iguales (varianza combinada o «pooled»). Al exigir un supuesto adicional que la t de Welch no necesita, se recomienda reservarla para casos donde la igualdad de varianzas está confirmada (o los tamaños de grupo son iguales y grandes) — en cualquier otro caso, la t de Welch es la opción más segura por defecto.",
+      uses:["Situaciones con tamaños de grupo iguales o muy similares y varianzas comprobadamente homogéneas, donde se prefiere el estadístico clásico por tradición del campo o del software.","Como referencia histórica: es la versión enseñada tradicionalmente, aunque hoy se recomienda la t de Welch como opción por defecto."],
       formula:"t = "+frac("x̄₁ − x̄₂", sqrt("s²ₚ (1/n₁ + 1/n₂)"))+"&nbsp;&nbsp;&nbsp; s²ₚ = "+frac("(n₁−1)s₁² + (n₂−1)s₂²","n₁ + n₂ − 2"),
       formulaNote:"x̄₁, x̄₂: medias de cada grupo · s²ₚ: varianza combinada (pooled) · gl = n₁ + n₂ − 2",
-      assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Normalidad de la variable en cada grupo (o tamaño muestral grande).","Homogeneidad de varianzas entre grupos (test de Levene).","Ausencia de outliers extremos."],
-      related:{id:"mann_whitney", label:"Alternativa no paramétrica"} },
+      assumptions:["Variable dependiente cuantitativa.","Dos grupos independientes entre sí.","Distribución razonablemente simétrica en cada grupo, sin outliers muy influyentes.","Homogeneidad de varianzas entre grupos confirmada (ej. test de Levene) — si no lo está, usa la t de Welch en su lugar.","Ausencia de outliers extremos."],
+      related:{id:"t_welch", label:"Opción recomendada por defecto (no exige varianzas iguales)"} },
 
     { id:"t_pareada", name:"t de Student para muestras pareadas", category:"parametrica", paradigm:"Paramétrica",
       def:"Prueba paramétrica que compara las medias de dos mediciones relacionadas (mismos sujetos en dos momentos o condiciones), evaluando si la diferencia promedio es distinta de cero.",
@@ -450,12 +460,12 @@
       related:{id:"wilcoxon_pareada", label:"Alternativa no paramétrica"} },
 
     { id:"mann_whitney", name:"U de Mann-Whitney", category:"no_parametrica", paradigm:"No paramétrica",
-      def:"Prueba no paramétrica equivalente a la t de Student independiente. Compara las distribuciones (rangos) de dos grupos independientes sin asumir normalidad.",
-      uses:["Comparar escalas de dolor u otras variables ordinales entre dos grupos de tratamiento.","Comparar una variable cuantitativa con muestras pequeñas o muy asimétricas entre dos grupos independientes."],
+      def:"Prueba no paramétrica que compara los rangos —no los valores brutos— de dos grupos independientes, evaluando si los valores de un grupo tienden a ser sistemáticamente mayores que los del otro. No es automáticamente una prueba de igualdad de medianas: solo puede interpretarse como comparación de localización o medianas cuando las distribuciones de ambos grupos tienen una forma y dispersión comparables; si difieren en forma o varianza, el resultado debe leerse como una comparación de distribuciones o de probabilidad de superioridad, no de medianas.",
+      uses:["Comparar escalas de dolor u otras variables ordinales entre dos grupos de tratamiento.","Comparar la probabilidad de que un valor de un grupo supere a uno del otro (probabilidad de superioridad), sin asumir normalidad ni igualdad de forma entre distribuciones."],
       formula:"U₁ = n₁n₂ + "+frac("n₁(n₁+1)","2")+" − R₁",
       formulaNote:"n₁, n₂: tamaños de cada grupo · R₁: suma de rangos del grupo 1 · U = mín(U₁, U₂)",
-      assumptions:["Variable dependiente al menos ordinal.","Dos grupos independientes.","No requiere normalidad.","Para interpretar el resultado como diferencia de medianas se asume una forma de distribución similar entre grupos."],
-      related:{id:"t_independiente", label:"Versión paramétrica equivalente"} },
+      assumptions:["Variable dependiente al menos ordinal.","Dos grupos independientes.","No requiere normalidad.","Para interpretarlo como diferencia de medianas (y no solo de distribuciones/rangos) se necesita que ambos grupos tengan una forma y dispersión comparables — compruébalo visualmente (boxplot o violin plot) antes de redactar la conclusión en términos de medianas."],
+      related:{id:"t_welch", label:"Opción paramétrica si el objetivo es comparar medias"} },
 
     { id:"wilcoxon_una", name:"Wilcoxon de una muestra (rangos con signo)", category:"no_parametrica", paradigm:"No paramétrica",
       def:"Prueba no paramétrica que compara la mediana de una muestra con un valor de referencia, basada en los rangos con signo de las diferencias respecto a ese valor.",
@@ -638,10 +648,21 @@
 
     q_comp_2_diseno:{ type:"question", text:"¿Cómo se relacionan las dos muestras?",
       help:"Independientes: sujetos distintos en cada grupo. Pareadas: mismos sujetos medidos dos veces.",
-      options:[ {label:"Independientes", next:"q_comp_2_ind_sup"}, {label:"Pareadas / dependientes", next:"q_comp_2_par_sup"} ] },
+      options:[ {label:"Independientes", next:"q_comp_2_obj"}, {label:"Pareadas / dependientes", next:"q_comp_2_par_sup"} ] },
 
-    q_comp_2_ind_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad (varianzas homogéneas)?",
-      options:[ {label:"Sí, ambos supuestos se cumplen", next:"res_t_independiente"}, {label:"No, alguno falla o la muestra es pequeña", next:"res_mann_whitney"} ] },
+    q_comp_2_obj:{ type:"question", text:"¿Cuál es tu objetivo principal al comparar los dos grupos?",
+      help:"Esto determina cómo se interpreta el resultado: una diferencia de medias no es lo mismo que una diferencia de medianas o una comparación de distribuciones completas.",
+      options:[
+        {label:"Comparar las medias (estimar la magnitud de la diferencia)", next:"q_comp_2_forma"},
+        {label:"Comparar medianas, rangos o la forma de la distribución", next:"res_mann_whitney"}
+      ] },
+
+    q_comp_2_forma:{ type:"question", text:"¿La evaluación conjunta de la distribución en cada grupo sugiere una forma razonable, sin asimetría grave ni outliers muy influyentes?",
+      help:"No te bases en una única prueba de normalidad: con muestras grandes detecta desviaciones triviales sin relevancia práctica, y con muestras pequeñas tiene poca potencia para detectar desviaciones reales. Evalúa conjuntamente el gráfico Q-Q, el histograma, la simetría, los valores atípicos y el tamaño muestral de cada grupo.",
+      options:[
+        {label:"Sí, la evaluación conjunta no muestra violaciones relevantes", next:"res_t_welch"},
+        {label:"No: asimetría grave, outliers muy influyentes, o muestra muy pequeña por grupo", next:"res_2ind_robusto"}
+      ] },
 
     q_comp_2_par_sup:{ type:"question", text:"¿Las diferencias entre pares siguen una distribución normal?",
       options:[ {label:"Sí", next:"res_t_pareada"}, {label:"No, o lo desconozco", next:"res_wilcoxon_pareada"} ] },
@@ -650,11 +671,13 @@
       help:"Independientes: cada sujeto pertenece a un único grupo. Medidas repetidas: los mismos sujetos se miden en todas las condiciones (ej. antes/durante/después).",
       options:[ {label:"Independientes", next:"q_comp_mas_ind_sup"}, {label:"Medidas repetidas", next:"q_comp_mas_rep_sup"} ] },
 
-    q_comp_mas_ind_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad entre los grupos?",
-      options:[ {label:"Sí", next:"res_anova_1f"}, {label:"No", next:"res_kruskal_wallis"} ] },
+    q_comp_mas_ind_sup:{ type:"question", text:"¿La evaluación conjunta de los residuos (Q-Q plot, histograma, homocedasticidad entre grupos, outliers) no muestra violaciones relevantes?",
+      help:"No te bases en una única prueba de normalidad aislada («Shapiro-Wilk p < .05 → no paramétrica») — con muestras grandes detecta desviaciones triviales, y con muestras pequeñas tiene poca potencia. Evalúa conjuntamente: forma de la distribución en cada grupo, homogeneidad de varianzas (test de Levene), observaciones influyentes y tamaño muestral.",
+      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_anova_1f"}, {label:"No: asimetría grave, varianzas muy heterogéneas u outliers influyentes", next:"res_kruskal_wallis"} ] },
 
-    q_comp_mas_rep_sup:{ type:"question", text:"¿Las diferencias entre condiciones siguen una distribución normal?",
-      options:[ {label:"Sí", next:"res_anova_rm"}, {label:"No", next:"res_friedman"} ] },
+    q_comp_mas_rep_sup:{ type:"question", text:"¿La evaluación conjunta de las diferencias entre condiciones (Q-Q plot, histograma, outliers) sugiere una distribución razonable?",
+      help:"Igual que en cualquier otro contraste: combina la inspección visual con el tamaño muestral, en vez de decidir a partir de un único p-valor de normalidad.",
+      options:[ {label:"Sí, no se observan violaciones relevantes", next:"res_anova_rm"}, {label:"No: asimetría grave u outliers influyentes", next:"res_friedman"} ] },
 
     q_comp_factorial:{ type:"question", text:"¿Cómo se estructuran los datos?",
       help:"Diseño factorial cruzado: todos los factores varían entre sujetos distintos — cada sujeto pertenece a una única combinación de niveles (ej. tratamiento A-hombre, tratamiento B-mujer…). Diseño mixto (grupos × condiciones): un factor es entre-sujetos (grupos) y otro es intra-sujetos, es decir, mide varias condiciones o momentos en los mismos sujetos (medidas repetidas). Datos anidados/jerárquicos: las observaciones no son independientes porque están agrupadas dentro de una unidad superior (pacientes dentro de hospitales, alumnos dentro de clases).",
@@ -664,11 +687,12 @@
         {label:"Hay datos anidados/jerárquicos, o datos faltantes en las medidas repetidas", next:"res_mixed_model"}
       ] },
 
-    q_comp_factorial_sup:{ type:"question", text:"¿Se cumplen normalidad y homocedasticidad de los residuos?",
-      options:[ {label:"Sí", next:"res_anova_2f"}, {label:"No, o lo desconozco", next:"res_anova_2f_caution"} ] },
+    q_comp_factorial_sup:{ type:"question", text:"¿La evaluación conjunta de los residuos del modelo (Q-Q plot, residuos frente a valores ajustados, homocedasticidad entre celdas, outliers influyentes) no muestra violaciones relevantes?",
+      help:"Evalúa de forma conjunta, no con una sola prueba de normalidad: gráfico Q-Q y residuos vs. ajustados para forma y homocedasticidad, tamaño de cada celda, y observaciones influyentes. Un p-valor de normalidad aislado no debe decidir esto por sí solo.",
+      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_anova_2f"}, {label:"No, o lo desconozco", next:"res_anova_2f_caution"} ] },
 
-    q_comp_mixto_sup:{ type:"question", text:"¿Se cumplen normalidad de los residuos, homocedasticidad entre grupos y esfericidad del factor repetido?",
-      help:"Esfericidad: las varianzas de las diferencias entre cada par de condiciones repetidas deben ser similares entre sí (se comprueba con el test de Mauchly). Si falla, se corrige con Greenhouse-Geisser en vez de descartar la prueba.",
+    q_comp_mixto_sup:{ type:"question", text:"¿La evaluación conjunta de los residuos, la homocedasticidad entre grupos y la esfericidad del factor repetido no muestra violaciones relevantes?",
+      help:"Esfericidad: las varianzas de las diferencias entre cada par de condiciones repetidas deben ser similares entre sí (se comprueba con el test de Mauchly). Si falla, se corrige con Greenhouse-Geisser en vez de descartar la prueba. Combina esto con la inspección visual de los residuos (Q-Q plot, outliers), no con una única prueba aislada.",
       options:[ {label:"Sí, se cumplen (o se corrigen si falla la esfericidad)", next:"res_anova_mixto"}, {label:"No, fallan claramente o lo desconozco", next:"res_anova_mixto_caution"} ] },
 
     q_asoc_tipo:{ type:"question", text:"¿Qué tipo de variables quieres relacionar?",
@@ -685,15 +709,27 @@
       options:[ {label:"Cuantitativa continua", next:"q_pred_npred"}, {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"} ] },
 
     q_pred_npred:{ type:"question", text:"¿Cuántas variables predictoras vas a usar?",
-      options:[ {label:"1 predictor", next:"res_reg_lineal_simple"}, {label:"2 o más predictores", next:"res_reg_lineal_multiple"} ] },
+      options:[ {label:"1 predictor", next:"q_pred_sup_simple"}, {label:"2 o más predictores", next:"q_pred_sup_multiple"} ] },
+
+    q_pred_sup_simple:{ type:"question", text:"¿La evaluación conjunta de los residuos (linealidad, residuos frente a valores ajustados, Q-Q plot) no muestra violaciones relevantes?",
+      help:"Revisa conjuntamente: relación lineal entre X e Y, dispersión constante de los residuos (homocedasticidad), forma aproximadamente normal de los residuos, y observaciones influyentes (distancia de Cook, leverage). No decidas a partir de un único p-valor de normalidad de la variable en bruto.",
+      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_reg_lineal_simple"}, {label:"No, o lo desconozco", next:"res_reg_diagnostico_alerta"} ] },
+
+    q_pred_sup_multiple:{ type:"question", text:"¿La evaluación conjunta de los residuos (linealidad, homocedasticidad, normalidad) y la ausencia de multicolinealidad relevante no muestran problemas?",
+      help:"Revisa conjuntamente: linealidad y homocedasticidad de los residuos (gráfico de residuos vs. ajustados), normalidad aproximada de los residuos (Q-Q plot), observaciones influyentes, y multicolinealidad entre predictores (VIF > 10 es motivo de alerta). No decidas a partir de un único p-valor de normalidad.",
+      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_reg_lineal_multiple"}, {label:"No, o lo desconozco", next:"res_reg_diagnostico_alerta"} ] },
 
     q_surv_tipo:{ type:"question", text:"¿Qué quieres analizar sobre el tiempo hasta un evento?",
       options:[ {label:"Comparar curvas de supervivencia entre grupos", next:"res_logrank"}, {label:"Modelar el efecto de varias variables sobre el riesgo", next:"res_cox"} ] },
 
     res_t_una:{ type:"result", testId:"t_una", justification:"Comparas una única muestra cuantitativa frente a un valor de referencia y tus datos cumplen el supuesto de normalidad, por lo que corresponde la prueba paramétrica t de Student de una muestra.", chart:{id:"boxplot", note:"Boxplot de la muestra con una línea de referencia horizontal en μ₀."} },
     res_wilcoxon_una:{ type:"result", testId:"wilcoxon_una", justification:"Comparas una única muestra frente a un valor de referencia, pero no se cumple el supuesto de normalidad. La alternativa no paramétrica es la prueba de Wilcoxon de una muestra.", chart:{id:"boxplot", note:"Boxplot con una línea de referencia horizontal en la mediana teórica."} },
-    res_t_independiente:{ type:"result", testId:"t_independiente", justification:"Comparas una variable cuantitativa entre dos grupos independientes y se cumplen normalidad y homocedasticidad, por lo que la t de Student para muestras independientes es la prueba adecuada.", chart:{id:"boxplot", note:"Boxplot o violin plot de ambos grupos con los puntos individuales superpuestos (jitter)."} },
-    res_mann_whitney:{ type:"result", testId:"mann_whitney", justification:"Comparas dos grupos independientes, pero no se cumplen los supuestos de normalidad u homocedasticidad. La alternativa no paramétrica es la U de Mann-Whitney.", chart:{id:"boxplot", note:"Boxplot o violin plot por grupo; al comparar medianas, evita el barplot de medias."} },
+    res_t_welch:{ type:"result", testId:"t_welch", justification:"Quieres comparar las medias de dos grupos independientes y la distribución en cada grupo no muestra problemas graves: la t de Welch es la opción recomendada por defecto — a diferencia de la t clásica, no exige varianzas iguales entre los grupos.", chart:{id:"boxplot", note:"Boxplot o violin plot de ambos grupos con los puntos individuales superpuestos (jitter)."} },
+    res_mann_whitney:{ type:"result", testId:"mann_whitney", justification:"Tu objetivo es comparar medianas, rangos o la distribución completa entre dos grupos independientes, no estimar una diferencia de medias: usa la U de Mann-Whitney, recordando que solo equivale a una comparación de medianas si ambos grupos tienen forma y dispersión comparables.", chart:{id:"boxplot", note:"Boxplot o violin plot por grupo; muestra los puntos individuales si n es pequeño."} },
+    res_2ind_robusto:{ type:"guidance", title:"Distribución problemática: valora robustez o bootstrap antes de decidir",
+      text:"Con asimetría grave, outliers muy influyentes o muestras muy pequeñas por grupo, ni la t de Welch ni la t clásica son fiables sin más. No cambies automáticamente a Mann-Whitney solo por esto: esa prueba compara rangos, no medias, y responde a una pregunta distinta. Considera en su lugar: (1) un bootstrap para la diferencia de medias (o medianas), que no depende de supuestos distribucionales; (2) métodos robustos como medias recortadas (trimmed means) o el test de Yuen; o (3) si en realidad tu interés es comparar distribuciones o medianas, usa Mann-Whitney de forma consciente, no por descarte.",
+      links:[ {id:"t_welch", note:"con bootstrap como análisis de sensibilidad"}, {id:"mann_whitney", note:"si el objetivo real es comparar distribuciones o rangos"} ],
+      chart:{id:"boxplot", note:"Boxplot o violin plot con todos los puntos individuales visibles, dado el tamaño muestral pequeño o la presencia de outliers."} },
     res_t_pareada:{ type:"result", testId:"t_pareada", justification:"Comparas las mismas unidades en dos momentos o condiciones (diseño pareado) y las diferencias siguen una distribución normal: usa la t de Student para muestras pareadas.", chart:{id:"boxplot", note:"Boxplot de las diferencias por sujeto, o líneas que conecten cada par antes-después."} },
     res_wilcoxon_pareada:{ type:"result", testId:"wilcoxon_pareada", justification:"Tu diseño es pareado, pero las diferencias no siguen una distribución normal. La alternativa no paramétrica es la prueba de Wilcoxon de rangos con signo.", chart:{id:"boxplot", note:"Boxplot de las diferencias, o gráfico de líneas pareadas antes-después."} },
     res_anova_1f:{ type:"result", testId:"anova_1f", justification:"Comparas una variable cuantitativa entre más de dos grupos independientes y se cumplen normalidad y homocedasticidad: el ANOVA de un factor es la prueba recomendada.", chart:{id:"violin", note:"Violin plot o boxplot por grupo, señalando con post-hoc (Tukey) qué pares difieren."} },
@@ -707,6 +743,10 @@
     res_reg_lineal_simple:{ type:"result", testId:"reg_lineal_simple", justification:"Quieres predecir o modelar una variable cuantitativa continua a partir de un único predictor: usa la regresión lineal simple.", chart:{id:"scatter_plot", note:"Dispersión de X vs Y con la recta ajustada, y un gráfico de residuos para validar supuestos."} },
     res_reg_lineal_multiple:{ type:"result", testId:"reg_lineal_multiple", justification:"Quieres predecir una variable cuantitativa continua a partir de dos o más predictores simultáneamente: usa la regresión lineal múltiple.", chart:{id:"scatter_plot", note:"Gráfico de valores observados vs. predichos, y de residuos vs. valores ajustados."} },
     res_reg_logistica:{ type:"result", testId:"reg_logistica", justification:"Quieres predecir una variable categórica binaria en función de una o más variables predictoras: usa la regresión logística.", chart:{id:"forest_plot", note:"Forest plot con las odds ratios (exp(β)) y sus IC95% por predictor."} },
+    res_reg_diagnostico_alerta:{ type:"guidance", title:"Revisa los diagnósticos antes de interpretar el modelo",
+      text:"Un modelo con residuos problemáticos (no lineales, heterocedásticos, no normales) o con observaciones muy influyentes puede dar coeficientes sesgados o intervalos de confianza poco fiables. Antes de interpretar los resultados, valora: transformar la variable dependiente o algún predictor (ver Transformaciones en el Diccionario), usar errores estándar robustos si solo falla la homocedasticidad, investigar o justificar la exclusión de observaciones muy influyentes (distancia de Cook), o reducir el número de predictores si hay multicolinealidad severa (VIF > 10).",
+      links:[ {id:"reg_lineal_simple", note:"si finalmente decides continuar con un único predictor"}, {id:"reg_lineal_multiple", note:"si finalmente decides continuar con varios predictores"} ],
+      chart:{id:"scatter_plot", note:"Gráfico de residuos frente a valores ajustados: es la primera comprobación antes de continuar."} },
     res_dunnett:{ type:"result", testId:"dunnett", justification:"Quieres comparar varios grupos de tratamiento frente a un único grupo control, no entre sí: el test de Dunnett ajusta el error Tipo I específicamente para ese tipo de comparación.", chart:{id:"boxplot", note:"Boxplot de todos los grupos con una línea de referencia en la media del grupo control."} },
     res_anova_2f:{ type:"result", testId:"anova_2f", justification:"Comparas grupos definidos por dos o más factores cruzados, sin anidamiento ni medidas repetidas, y se cumplen normalidad y homocedasticidad: usa el ANOVA de dos vías.", chart:{id:"interaction_plot", note:"Imprescindible para visualizar si existe interacción entre ambos factores."} },
     res_anova_2f_caution:{ type:"guidance", title:"Revisa los supuestos antes de interpretar el ANOVA factorial",
@@ -724,7 +764,7 @@
 
     res_guidance_mixta:{ type:"guidance", title:"No se trata de una correlación clásica",
       text:"Cuando una variable es categórica y la otra cuantitativa, no se usa un coeficiente de correlación estándar. Si la variable categórica tiene dos niveles, trátalo como una comparación de dos grupos. Si tiene tres o más niveles, trátalo como una comparación de varios grupos.",
-      links:[ {id:"t_independiente", note:"2 niveles + normalidad"}, {id:"mann_whitney", note:"2 niveles sin normalidad"}, {id:"anova_1f", note:"≥3 niveles + normalidad"}, {id:"kruskal_wallis", note:"≥3 niveles sin normalidad"} ],
+      links:[ {id:"t_welch", note:"2 niveles, comparando medias"}, {id:"mann_whitney", note:"2 niveles, comparando distribuciones/medianas"}, {id:"anova_1f", note:"≥3 niveles + normalidad"}, {id:"kruskal_wallis", note:"≥3 niveles sin normalidad"} ],
       chart:null }
   };
 
@@ -953,15 +993,16 @@
   /* ============================================================
      7. AUDITOR — REGLAS DE REQUISITOS POR PRUEBA (Pestaña 4)
   ============================================================ */
-  var VARTYPE_LABEL = { nominal:"Nominal", ordinal:"Ordinal", discreta:"Discreta", continua:"Continua" };
+  var VARTYPE_LABEL = { nominal:"Nominal", ordinal:"Ordinal", discreta:"Discreta", continua:"Continua", tiempo_evento:"Tiempo hasta un evento (supervivencia)" };
   var DESIGN_LABEL = { independientes:"Independientes", pareadas:"Pareadas / medidas repetidas", anidados:"Anidados / jerárquicos", na:"No aplica" };
 
   var REQUIREMENTS = {
     t_una:{ varTypes:["discreta","continua"], groups:1, design:"na", normality:true, homoscedasticity:false },
     wilcoxon_una:{ varTypes:["ordinal","discreta","continua"], groups:1, design:"na", normality:false, homoscedasticity:false },
+    t_welch:{ varTypes:["discreta","continua"], groups:2, design:"independientes", normality:true, homoscedasticity:false, designSwap:{id:"t_pareada", when:"pareadas"} },
     t_independiente:{ varTypes:["discreta","continua"], groups:2, design:"independientes", normality:true, homoscedasticity:true, designSwap:{id:"t_pareada", when:"pareadas"} },
     mann_whitney:{ varTypes:["ordinal","discreta","continua"], groups:2, design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"wilcoxon_pareada", when:"pareadas"} },
-    t_pareada:{ varTypes:["discreta","continua"], groups:2, design:"pareadas", normality:true, homoscedasticity:false, designSwap:{id:"t_independiente", when:"independientes"} },
+    t_pareada:{ varTypes:["discreta","continua"], groups:2, design:"pareadas", normality:true, homoscedasticity:false, designSwap:{id:"t_welch", when:"independientes"} },
     wilcoxon_pareada:{ varTypes:["ordinal","discreta","continua"], groups:2, design:"pareadas", normality:false, homoscedasticity:false, designSwap:{id:"mann_whitney", when:"independientes"} },
     anova_1f:{ varTypes:["discreta","continua"], groups:"ge3", design:"independientes", normality:true, homoscedasticity:true, designSwap:{id:"anova_rm", when:"pareadas"} },
     kruskal_wallis:{ varTypes:["ordinal","discreta","continua"], groups:"ge3", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"friedman", when:"pareadas"} },
@@ -976,7 +1017,9 @@
     spearman:{ varTypes:["ordinal","discreta","continua"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_lineal_simple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
     reg_lineal_multiple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
-    reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false }
+    reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    logrank:{ varTypes:["tiempo_evento"], groups:"any", design:"independientes", normality:false, homoscedasticity:false },
+    cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false }
   };
   var AUDIT_TEST_IDS = Object.keys(REQUIREMENTS);
 
@@ -1087,15 +1130,32 @@
     return '<div class="req-block"><span class="req-title">Requisitos que deben verificarse antes de interpretar</span>'+
       '<ul class="assump-list">'+test.assumptions.map(function(a){ return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>'; }).join("")+'</ul></div>';
   }
+  function badgeRowHtml(test){
+    var html = badge(test.category, test.paradigm);
+    if(test.category !== "parametrica" && test.category !== "no_parametrica"){ html += badge(test.category, CATEGORY_LABEL[test.category]); }
+    return '<div class="badge-row">'+html+'</div>';
+  }
+
+  var _depthCache = {};
+  function minDepthToLeaf(nodeId){
+    if(_depthCache[nodeId] !== undefined) return _depthCache[nodeId];
+    var node = TREE[nodeId];
+    if(!node || node.type !== "question") return _depthCache[nodeId] = 0;
+    _depthCache[nodeId] = 1;
+    var min = Infinity;
+    node.options.forEach(function(opt){ var d = 1 + minDepthToLeaf(opt.next); if(d < min) min = d; });
+    return _depthCache[nodeId] = min;
+  }
 
   function renderWizard(){
     var node = TREE[wizardCurrent];
     renderBreadcrumb();
 
     if(node.type === "question"){
+      var stepX = wizardHistory.length+1, stepY = wizardHistory.length + minDepthToLeaf(wizardCurrent);
       stageEl.innerHTML =
         '<div class="q-card">'+
-          '<span class="kicker">Paso '+(wizardHistory.length+1)+'</span>'+
+          '<span class="kicker">Paso '+stepX+' de '+stepY+'</span>'+
           '<h2>'+escapeHtml(node.text)+'</h2>'+
           (node.help ? '<p class="q-help">'+escapeHtml(node.help)+'</p>' : '')+
           '<div class="options">'+node.options.map(optionBtnHtml).join("")+'</div>'+
@@ -1126,7 +1186,7 @@
         '<div class="result-card">'+
           '<span class="result-kicker">Resultado recomendado</span>'+
           '<h2 class="result-name">'+escapeHtml(test.name)+'</h2>'+
-          '<div class="badge-row">'+badge(test.category, test.paradigm)+badge(test.category, CATEGORY_LABEL[test.category])+'</div>'+
+          badgeRowHtml(test)+
           '<p class="result-just">'+escapeHtml(node.justification)+'</p>'+
           altHtml + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
           '<div class="result-actions">'+
@@ -1384,7 +1444,7 @@
   var auditResult = null;
 
   var CHIP_GROUPS = {
-    varType:[{v:"nominal",l:"Nominal"},{v:"ordinal",l:"Ordinal"},{v:"discreta",l:"Discreta"},{v:"continua",l:"Continua"}],
+    varType:[{v:"nominal",l:"Nominal"},{v:"ordinal",l:"Ordinal"},{v:"discreta",l:"Discreta"},{v:"continua",l:"Continua"},{v:"tiempo_evento",l:"Tiempo hasta evento"}],
     groups:[{v:"1",l:"1 grupo"},{v:"2",l:"2 grupos"},{v:"ge3",l:"3 o más"},{v:"na",l:"No aplica"}],
     design:[{v:"independientes",l:"Independientes"},{v:"pareadas",l:"Pareadas / repetidas"},{v:"anidados",l:"Anidados / jerárquicos"},{v:"na",l:"No aplica"}],
     normal:[{v:"si",l:"Sí"},{v:"no",l:"No"},{v:"no_se",l:"No lo sé"}],
