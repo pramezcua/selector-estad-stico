@@ -148,6 +148,9 @@
   .effect-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--accent-ink); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
   .effect-box .effect-name{ font-weight:700; font-size:.95rem; margin-bottom:.3rem; display:block; }
   .effect-box p{ font-size:.88rem; line-height:1.55; color:var(--text); }
+  .multi-box{ background:var(--cat-regresion-soft); border:1px solid var(--border); border-radius:var(--radius); padding:.9rem 1rem; margin-bottom:1.2rem; }
+  .multi-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--cat-regresion); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
+  .multi-box p{ font-size:.88rem; line-height:1.55; color:var(--text); }
   .req-block{ margin-top:1.2rem; }
   .req-block .req-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.6rem; }
 
@@ -510,6 +513,7 @@
       formulaNote:"k: número de grupos · N: tamaño muestral total · gl = (k−1, N−k)",
       assumptions:["Variable dependiente cuantitativa.","Más de dos grupos independientes.","Normalidad de la variable en cada grupo.","Homogeneidad de varianzas entre grupos.","Observaciones independientes."],
       effect:{name:"Eta cuadrado parcial (η²ₚ) u omega cuadrado (ω²)", note:"ω² está menos sesgado que η²ₚ en muestras pequeñas. Si hay post-hoc, acompáñalo de las diferencias de medias e IC 95% por pareja."},
+      multiplicity:"Si el ANOVA global es significativo y comparas todos los pares posibles, corrige con Tukey HSD; si comparas todos los grupos frente a un único control, usa Dunnett en su lugar (más potente para ese caso concreto).",
       related:{id:"kruskal_wallis", label:"Alternativa no paramétrica"} },
 
     { id:"anova_rm", name:"ANOVA de medidas repetidas", category:"parametrica", paradigm:"Paramétrica",
@@ -528,6 +532,7 @@
       formulaNote:"N: tamaño muestral total · nᵢ: tamaño del grupo i · Rᵢ: suma de rangos del grupo i",
       assumptions:["Variable al menos ordinal.","Más de dos grupos independientes.","No requiere normalidad.","Se asume una forma de distribución similar entre grupos para interpretar diferencias de mediana."],
       effect:{name:"Épsilon cuadrado (ε²), o eta cuadrado basado en H", note:"Cuantifica la variabilidad en los rangos explicada por el factor; complementa con las medianas e IQR por grupo."},
+      multiplicity:"Si el resultado global es significativo, las comparaciones post-hoc por pares (ej. test de Dunn) necesitan corrección — Holm-Bonferroni o FDR son preferibles a Bonferroni simple.",
       related:{id:"anova_1f", label:"Versión paramétrica equivalente"} },
 
     { id:"friedman", name:"Friedman", category:"no_parametrica", paradigm:"No paramétrica",
@@ -537,6 +542,7 @@
       formulaNote:"N: número de sujetos · k: número de condiciones · Rⱼ: suma de rangos de la condición j",
       assumptions:["Variable al menos ordinal.","Mismos sujetos evaluados en ≥ 3 condiciones.","No requiere normalidad ni esfericidad.","Diseño de bloques completos (todos los sujetos pasan por todas las condiciones)."],
       effect:{name:"W de Kendall (concordancia)", note:"Cuantifica el grado de concordancia entre condiciones; complementa con las medianas por condición."},
+      multiplicity:"Si el resultado global es significativo, las comparaciones post-hoc por pares (ej. McNemar entre condiciones) necesitan corrección por comparaciones múltiples (Holm-Bonferroni o FDR).",
       related:{id:"anova_rm", label:"Versión paramétrica equivalente"} },
 
     { id:"dunnett", name:"Test de Dunnett", category:"parametrica", paradigm:"Paramétrica (post-hoc)",
@@ -546,6 +552,7 @@
       formulaNote:"Se compara contra el valor crítico d_α de la distribución de Dunnett, no contra la t de Student estándar",
       assumptions:["Variable dependiente cuantitativa.","Tres o más grupos independientes, incluyendo un grupo control claramente definido.","Normalidad de los residuos en cada grupo.","Homogeneidad de varianzas entre grupos."],
       effect:{name:"Diferencia de medias frente al control, con IC ajustado", note:"El IC de Dunnett ya está ajustado por comparaciones múltiples — repórtalo por cada grupo frente al control."},
+      multiplicity:"Este test ya incorpora su propia corrección por comparaciones múltiples frente al control — no apliques además Bonferroni u otra corrección adicional sobre sus resultados.",
       related:null },
 
     { id:"anova_2f", name:"ANOVA de dos vías (factorial)", category:"parametrica", paradigm:"Paramétrica",
@@ -555,6 +562,7 @@
       formulaNote:"α_i, β_j: efectos principales de cada factor · (αβ)_ij: efecto de interacción · se obtiene un estadístico F para cada efecto",
       assumptions:["Variable dependiente cuantitativa.","Dos o más factores categóricos independientes entre sujetos.","Normalidad de los residuos.","Homogeneidad de varianzas entre las celdas del diseño.","Idealmente, tamaños de celda similares (diseño equilibrado)."],
       effect:{name:"Eta cuadrado parcial (η²ₚ) por efecto principal y por la interacción", note:"Reporta η²ₚ para cada factor y para la interacción por separado."},
+      multiplicity:"Con post-hoc por niveles dentro de cada factor (o dentro de la interacción), corrige con Tukey HSD; con muchas comparaciones planificadas específicas, Holm-Bonferroni es preferible.",
       related:{id:"anova_mixto", label:"Si además una de las variables se mide de forma repetida"} },
 
     { id:"anova_mixto", name:"ANOVA Mixto (grupos × condiciones / split-plot)", category:"parametrica", paradigm:"Paramétrica",
@@ -564,6 +572,7 @@
       formulaNote:"α_i: efecto del grupo (entre-sujetos) · π_j(i): sujeto anidado en el grupo · β_k: efecto de la condición repetida (intra-sujetos) · (αβ)_ik: interacción grupo × condición",
       assumptions:["Variable dependiente cuantitativa.","Un factor entre-sujetos (grupos distintos) y un factor intra-sujetos (mismos sujetos en todas las condiciones).","Normalidad de los residuos.","Homogeneidad de varianzas entre grupos (test de Levene) y de las matrices de covarianza (M de Box).","Esfericidad del factor intra-sujetos (test de Mauchly), o aplicar corrección de Greenhouse-Geisser.","Sin datos faltantes ni estructura anidada adicional (en ese caso, usar un Modelo Mixto)."],
       effect:{name:"Eta cuadrado parcial (η²ₚ) del grupo, del tiempo y de su interacción", note:"La interacción grupo × tiempo suele ser el estimando principal en este diseño — repórtala con prioridad sobre los efectos principales por separado."},
+      multiplicity:"Con comparaciones post-hoc entre momentos concretos dentro de cada grupo (o entre grupos en un momento concreto), corrige con Holm-Bonferroni o FDR según el número de comparaciones.",
       related:{id:"mixed_model", label:"Alternativa robusta si hay datos faltantes o anidamiento"} },
 
     { id:"mixed_model", name:"Modelo Mixto (efectos fijos y aleatorios)", category:"parametrica", paradigm:"Modelo paramétrico avanzado",
@@ -575,6 +584,42 @@
       effect:{name:"Coeficientes con IC 95%, y R² marginal/condicional", note:"R² marginal (Nakagawa-Schielzeth): varianza explicada solo por los efectos fijos. R² condicional: incluyendo también los efectos aleatorios."},
       related:{id:"anova_mixto", label:"Versión clásica sin datos faltantes ni anidamiento"} },
 
+    { id:"gee_continuo", name:"GEE para resultados continuos", category:"parametrica", paradigm:"Modelo paramétrico avanzado",
+      def:"Método basado en ecuaciones de estimación generalizadas que modela el efecto promedio poblacional de los predictores sobre un resultado continuo, ajustando los errores estándar por la correlación entre observaciones repetidas o agrupadas (por sujeto, centro, etc.), sin necesidad de especificar una distribución para efectos aleatorios.",
+      uses:["Analizar un resultado continuo medido repetidamente sobre los mismos sujetos cuando el interés es el efecto promedio poblacional, no la trayectoria individual.","Modelar datos agrupados (por centro, familia) cuando el interés es la asociación promedio, no la variabilidad entre grupos en sí misma."],
+      formula:"E[Y<sub>ij</sub>] = β₀ + β₁X<sub>ij</sub> + ⋯ &nbsp;&nbsp; Var(Y<sub>i</sub>) = φ·V(μ<sub>i</sub>)<sup>1/2</sup>R(α)V(μ<sub>i</sub>)<sup>1/2</sup>",
+      formulaNote:"R(α): matriz de correlación de trabajo (intercambiable, autorregresiva…) que modela la dependencia entre observaciones del mismo sujeto/grupo · los coeficientes β son efectos promedio poblacionales (population-averaged), a diferencia de los de un modelo mixto.",
+      assumptions:["Variable dependiente cuantitativa.","Observaciones agrupadas o repetidas con una estructura de correlación identificable.","La parte sistemática (media) del modelo está correctamente especificada — los errores estándar son robustos aunque la matriz de correlación de trabajo no sea exactamente la correcta.","Número de grupos/sujetos suficiente para que los errores estándar robustos (sandwich) sean fiables."],
+      effect:{name:"Coeficientes con IC 95% robustos (sandwich)", note:"Interpreta los coeficientes como efectos promedio poblacionales, no como el efecto esperado para un sujeto concreto — esa es la diferencia clave frente a un modelo mixto."},
+      related:{id:"mixed_model", label:"Alternativa si el interés es el efecto específico de cada sujeto, no el promedio poblacional"} },
+
+    { id:"gee_binario", name:"GEE para resultados binarios", category:"regresion", paradigm:"Modelo paramétrico avanzado",
+      def:"Extensión de las ecuaciones de estimación generalizadas para un resultado binario, modelando la probabilidad promedio poblacional del evento en función de los predictores, ajustando los errores estándar por la correlación entre observaciones repetidas o agrupadas.",
+      uses:["Modelar la proporción de éxito de un tratamiento medida repetidamente en el tiempo, cuando el interés es el efecto promedio poblacional.","Analizar un resultado binario en datos agrupados por centro o familia."],
+      formula:"logit(E[Y<sub>ij</sub>]) = β₀ + β₁X<sub>ij</sub> + ⋯",
+      formulaNote:"Igual que la GEE continua, pero con función de enlace logit · los coeficientes se interpretan como odds ratios promedio poblacionales.",
+      assumptions:["Variable dependiente binaria.","Observaciones agrupadas o repetidas con una estructura de correlación identificable.","La parte sistemática del modelo está correctamente especificada.","Número de grupos/sujetos suficiente — funciona peor que un modelo mixto cuando hay muy pocos clusters."],
+      effect:{name:"Odds ratio promedio poblacional (exp(β)) con IC 95% robusto", note:"A diferencia de un modelo logístico mixto, el OR de GEE es un efecto promedio poblacional, no el efecto específico de un sujeto concreto."},
+      related:{id:"glmm_logistico", label:"Alternativa si el interés es el efecto específico de cada sujeto"} },
+
+    { id:"glmm_logistico", name:"Modelo logístico mixto", category:"regresion", paradigm:"Modelo paramétrico avanzado",
+      def:"Extensión de la regresión logística que incluye efectos aleatorios (por sujeto, centro, etc.), adecuada para un resultado binario con estructura de datos anidada, jerárquica o de medidas repetidas.",
+      uses:["Modelar la probabilidad de un evento binario medido repetidamente sobre los mismos sujetos.","Modelar un resultado binario en pacientes anidados en distintos centros, evitando la pseudorreplicación."],
+      formula:"logit(P(Y<sub>ij</sub>=1)) = X<sub>ij</sub>β + Z<sub>ij</sub>u<sub>i</sub> &nbsp;&nbsp; u<sub>i</sub> ~ N(0,G)",
+      formulaNote:"A diferencia de GEE, los coeficientes β son efectos específicos de sujeto (subject-specific): el cambio en el logit para un sujeto concreto, no el promedio poblacional.",
+      assumptions:["Variable dependiente binaria.","Estructura de datos anidada, jerárquica o de medidas repetidas.","Normalidad de los efectos aleatorios.","Número de grupos suficiente para estimar la varianza de los efectos aleatorios con precisión."],
+      effect:{name:"Odds ratio específico de sujeto (exp(β)) con IC 95%", note:"Se interpreta condicionado al sujeto o cluster concreto — no es directamente comparable al OR promedio poblacional de una GEE."},
+      related:{id:"gee_binario", label:"Alternativa si el interés es el efecto promedio poblacional, no el específico de sujeto"} },
+
+    { id:"glmm_conteo", name:"Modelo de conteo mixto", category:"regresion", paradigm:"Modelo paramétrico avanzado",
+      def:"Extensión de la regresión de Poisson o binomial negativa que incluye efectos aleatorios, adecuada para una variable de conteo con estructura de datos anidada, jerárquica o de medidas repetidas.",
+      uses:["Modelar el número de crisis o eventos medido repetidamente sobre los mismos sujetos a lo largo del tiempo.","Modelar un recuento de eventos en pacientes anidados en distintos centros."],
+      formula:"ln(μ<sub>ij</sub>) = X<sub>ij</sub>β + Z<sub>ij</sub>u<sub>i</sub> &nbsp;&nbsp; u<sub>i</sub> ~ N(0,G)",
+      formulaNote:"Puede basarse en Poisson o en binomial negativa según haya o no sobredispersión adicional a la ya explicada por los efectos aleatorios.",
+      assumptions:["Variable dependiente de conteo.","Estructura de datos anidada, jerárquica o de medidas repetidas.","Comprobar sobredispersión residual incluso tras incluir los efectos aleatorios (puede requerir la versión binomial negativa mixta).","Normalidad de los efectos aleatorios."],
+      effect:{name:"Razón de tasas específica de sujeto (exp(β)) con IC 95%", note:"Como en el resto de modelos mixtos, se interpreta condicionado al sujeto o cluster concreto."},
+      related:{id:"reg_binomial_negativa", label:"Versión sin efectos aleatorios, para datos no agrupados/repetidos"} },
+
     { id:"chi2", name:"Chi-cuadrado de independencia", category:"asociacion", paradigm:"No paramétrica",
       def:"Prueba que evalúa si existe asociación estadística entre dos variables categóricas, comparando las frecuencias observadas con las frecuencias esperadas bajo el supuesto de independencia.",
       uses:["Evaluar si existe asociación entre el sexo y la presencia o ausencia de una enfermedad.","Analizar si la respuesta a un tratamiento (sí/no) está asociada al grupo experimental."],
@@ -582,6 +627,7 @@
       formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia",
       assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Frecuencias esperadas ≥ 5 en al menos el 80% de las celdas.","Si no se cumple, usar el test exacto de Fisher."],
       effect:{name:"V de Cramér, u odds ratio/riesgo relativo si la tabla es 2×2", note:"En tablas 2×2, el odds ratio o el riesgo relativo con IC 95% son más informativos e interpretables que V de Cramér."},
+      multiplicity:"Si repites esta prueba sobre varias variables o subgrupos (ej. varios síntomas frente al mismo desenlace), corrige con Holm-Bonferroni o FDR antes de decidir qué asociaciones son significativas — especialmente en análisis exploratorios.",
       related:{id:"fisher", label:"Alternativa exacta con frecuencias esperadas pequeñas"} },
 
     { id:"fisher", name:"Test exacto de Fisher", category:"asociacion", paradigm:"No paramétrica",
@@ -618,6 +664,7 @@
       formulaNote:"x̄, ȳ: medias de cada variable · r ∈ [−1, 1]",
       assumptions:["Ambas variables cuantitativas.","Relación lineal entre las variables.","Normalidad bivariada (o tamaño muestral grande).","Homocedasticidad y ausencia de outliers influyentes."],
       effect:{name:"El propio coeficiente r, con IC 95%", note:"El IC se calcula mediante la transformación z de Fisher, no de forma simétrica alrededor de r."},
+      multiplicity:"Si calculas muchas correlaciones simultáneamente (ej. entre múltiples biomarcadores), controla la tasa de falsos descubrimientos con Benjamini-Hochberg (FDR) en vez de interpretar cada p-valor de forma aislada — especialmente en análisis exploratorios.",
       related:{id:"spearman", label:"Alternativa no paramétrica"} },
 
     { id:"spearman", name:"Correlación de Spearman", category:"asociacion", paradigm:"No paramétrica",
@@ -627,6 +674,7 @@
       formulaNote:"dᵢ: diferencia entre los rangos de cada par de observaciones · n: número de pares",
       assumptions:["Ambas variables al menos ordinales.","Relación monótona (no necesariamente lineal).","No requiere normalidad.","Robusta ante outliers."],
       effect:{name:"El propio coeficiente ρ, con IC 95% (bootstrap)", note:"A diferencia de Pearson, ρ no tiene una fórmula cerrada simple para el IC — se recomienda bootstrap."},
+      multiplicity:"Igual que con Pearson: si pruebas muchas correlaciones a la vez, controla el FDR con Benjamini-Hochberg en vez de interpretar cada p-valor de forma aislada.",
       related:{id:"pearson", label:"Versión paramétrica equivalente"} },
 
     { id:"reg_lineal_simple", name:"Regresión lineal simple", category:"regresion", paradigm:"Modelo predictivo",
@@ -645,6 +693,7 @@
       formulaNote:"β_p: coeficiente de cada predictor Xₚ, controlando por el resto de variables del modelo",
       assumptions:["Variable dependiente cuantitativa continua.","Relación lineal entre predictores y variable dependiente.","Independencia y homocedasticidad de los residuos.","Normalidad de los residuos.","Ausencia de multicolinealidad entre predictores (VIF < 10)."],
       effect:{name:"Coeficientes con IC 95%, y R² ajustado", note:"El R² ajustado penaliza por el número de predictores, evitando sobrestimar el ajuste al añadir variables."},
+      multiplicity:"Con muchos predictores o si pruebas varias variantes del modelo, recuerda que cada coeficiente es una comparación: en análisis exploratorios con muchas hipótesis, considera un ajuste FDR sobre los p-valores de los coeficientes de interés.",
       related:{id:"reg_lineal_simple", label:"Versión con un único predictor"} },
 
     { id:"reg_logistica", name:"Regresión logística", category:"regresion", paradigm:"Modelo predictivo",
@@ -654,6 +703,7 @@
       formulaNote:"p: probabilidad del evento · p = 1 / (1 + e^−(β₀+β₁X₁+…))",
       assumptions:["Variable dependiente categórica binaria.","Independencia de las observaciones.","Relación lineal entre los predictores y el logit de la probabilidad.","Ausencia de multicolinealidad.","Tamaño muestral suficiente por predictor (regla práctica ≈10 eventos por variable)."],
       effect:{name:"Odds ratio (exp(β)) con IC 95% por predictor", note:"Evita reportar solo el p-valor: el OR con su IC comunica la magnitud y precisión del efecto."},
+      multiplicity:"Con muchos predictores o hipótesis exploratorias, considera un ajuste FDR (Benjamini-Hochberg) sobre los p-valores de los coeficientes en vez de interpretarlos de forma aislada.",
       related:{id:"reg_lineal_multiple", label:"Ver también"} },
 
     { id:"reg_logistica_ordinal", name:"Regresión logística ordinal", category:"regresion", paradigm:"Modelo predictivo",
@@ -663,6 +713,7 @@
       formulaNote:"j: cada punto de corte entre categorías consecutivas · α_j: intercepto propio de cada corte · el modelo asume que los coeficientes β son los mismos en todos los cortes (supuesto de odds proporcionales).",
       assumptions:["Variable dependiente categórica ordinal (≥3 niveles con orden natural).","Supuesto de odds proporcionales: el efecto de cada predictor es el mismo en todos los puntos de corte — compruébalo con un test de líneas paralelas (Brant) antes de interpretar un único coeficiente por predictor.","Independencia de las observaciones.","Ausencia de multicolinealidad entre predictores.","Categorías con suficientes observaciones (evita niveles casi vacíos)."],
       effect:{name:"Odds ratio proporcional (exp(β)) con IC 95% por predictor", note:"Si falla el supuesto de odds proporcionales, considera un modelo de odds parciales o una regresión multinomial."},
+      multiplicity:"Con muchos predictores o hipótesis exploratorias, considera un ajuste FDR sobre los p-valores de los coeficientes en vez de interpretarlos de forma aislada.",
       related:{id:"reg_multinomial", label:"Si las categorías no tienen un orden claro"} },
 
     { id:"reg_multinomial", name:"Regresión multinomial", category:"regresion", paradigm:"Modelo predictivo",
@@ -890,10 +941,10 @@
 
     q_pred_tipo:{ type:"question", text:"¿Qué tipo de variable quieres predecir (variable dependiente)?",
       options:[
-        {label:"Cuantitativa continua", next:"q_pred_npred"},
-        {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"res_reg_logistica"},
+        {label:"Cuantitativa continua", next:"q_pred_cluster_cont"},
+        {label:"Categórica binaria (sí/no, éxito/fracaso)", next:"q_pred_cluster_bin"},
         {label:"Categórica con más de dos niveles (nominal u ordinal)", next:"q_pred_cat_orden"},
-        {label:"Recuento de eventos (0, 1, 2… ej. número de caídas, ingresos, exacerbaciones)", next:"q_pred_conteo_disp"}
+        {label:"Recuento de eventos (0, 1, 2… ej. número de caídas, ingresos, exacerbaciones)", next:"q_pred_cluster_conteo"}
       ] },
 
     q_pred_cat_orden:{ type:"question", text:"¿Las categorías de la variable a predecir tienen un orden natural?",
@@ -902,6 +953,26 @@
         {label:"Sí, tienen un orden natural (ordinal)", next:"res_reg_logistica_ordinal"},
         {label:"No, no hay un orden claro (nominal)", next:"res_reg_multinomial"}
       ] },
+
+    q_pred_cluster_cont:{ type:"question", text:"¿Tus datos están agrupados o repetidos (mismos sujetos medidos varias veces, o anidados en centros/grupos/clases)?",
+      help:"Ignorar esta estructura —tratando observaciones dependientes como si fueran independientes— infla artificialmente la significación: es un error metodológico frecuente.",
+      options:[ {label:"No, cada observación es independiente", next:"q_pred_npred"}, {label:"Sí, hay agrupamiento o repetición", next:"q_pred_cluster_cont_enfoque"} ] },
+
+    q_pred_cluster_cont_enfoque:{ type:"question", text:"¿Tu interés principal es el efecto promedio en la población, o el efecto específico de cada sujeto/grupo?",
+      help:"GEE estima el efecto promedio poblacional y es más simple de interpretar. Un modelo mixto estima además cuánto varían los sujetos/grupos entre sí, y es preferible si ese es tu interés o si tienes pocos clusters.",
+      options:[ {label:"Efecto promedio poblacional", next:"res_gee_continuo"}, {label:"Efecto específico de sujeto/grupo, o me interesa su variabilidad", next:"res_mixed_model_pred"} ] },
+
+    q_pred_cluster_bin:{ type:"question", text:"¿Tus datos están agrupados o repetidos (mismos sujetos medidos varias veces, o anidados en centros/grupos/clases)?",
+      help:"Ignorar esta estructura —tratando observaciones dependientes como si fueran independientes— infla artificialmente la significación: es un error metodológico frecuente.",
+      options:[ {label:"No, cada observación es independiente", next:"res_reg_logistica"}, {label:"Sí, hay agrupamiento o repetición", next:"q_pred_cluster_bin_enfoque"} ] },
+
+    q_pred_cluster_bin_enfoque:{ type:"question", text:"¿Tu interés principal es el efecto promedio en la población, o el efecto específico de cada sujeto/grupo?",
+      help:"GEE estima el efecto promedio poblacional (OR poblacional). Un modelo logístico mixto estima el efecto específico de cada sujeto/grupo y su variabilidad.",
+      options:[ {label:"Efecto promedio poblacional", next:"res_gee_binario"}, {label:"Efecto específico de sujeto/grupo, o me interesa su variabilidad", next:"res_glmm_logistico"} ] },
+
+    q_pred_cluster_conteo:{ type:"question", text:"¿Tus datos están agrupados o repetidos (mismos sujetos medidos varias veces, o anidados en centros/grupos/clases)?",
+      help:"Ignorar esta estructura —tratando observaciones dependientes como si fueran independientes— infla artificialmente la significación: es un error metodológico frecuente.",
+      options:[ {label:"No, cada observación es independiente", next:"q_pred_conteo_disp"}, {label:"Sí, hay agrupamiento o repetición", next:"res_glmm_conteo"} ] },
 
     q_pred_conteo_disp:{ type:"question", text:"¿La varianza de los conteos es claramente mayor que la media (sobredispersión), o hay más ceros de los que un modelo de Poisson esperaría?",
       help:"En un modelo de Poisson, la varianza debe ser igual a la media. Si la varianza observada es notablemente mayor (sobredispersión, muy habitual en datos reales) o hay un exceso de ceros que ni la sobredispersión explica, Poisson infravalora los errores estándar y puede producir significaciones falsas. Si estás modelando una tasa —eventos por tiempo de exposición o tamaño muestral—, recuerda incluir el logaritmo del tiempo/exposición como offset en el modelo, no como un predictor más.",
@@ -990,6 +1061,11 @@
       text:"Un modelo con residuos problemáticos (no lineales, heterocedásticos, no normales) o con observaciones muy influyentes puede dar coeficientes sesgados o intervalos de confianza poco fiables. Antes de interpretar los resultados, valora: transformar la variable dependiente o algún predictor (ver Transformaciones en el Diccionario), usar errores estándar robustos si solo falla la homocedasticidad, investigar o justificar la exclusión de observaciones muy influyentes (distancia de Cook), o reducir el número de predictores si hay multicolinealidad severa (VIF > 10).",
       links:[ {id:"reg_lineal_simple", note:"si finalmente decides continuar con un único predictor"}, {id:"reg_lineal_multiple", note:"si finalmente decides continuar con varios predictores"} ],
       chart:{id:"scatter_plot", note:"Gráfico de residuos frente a valores ajustados: es la primera comprobación antes de continuar."} },
+    res_gee_continuo:{ type:"result", testId:"gee_continuo", justification:"Tus datos están agrupados o repetidos y tu interés principal es el efecto promedio en la población: usa GEE, que ajusta los errores estándar por la correlación intra-sujeto/grupo sin necesidad de especificar una distribución para efectos aleatorios.", chart:{id:"scatter_plot", note:"Trayectorias individuales de una muestra de sujetos, superpuestas a la tendencia promedio poblacional estimada."} },
+    res_mixed_model_pred:{ type:"result", testId:"mixed_model", justification:"Tus datos están agrupados o repetidos y te interesa el efecto específico de cada sujeto/grupo (o su variabilidad), no solo el promedio poblacional: usa un modelo mixto de efectos fijos y aleatorios.", chart:{id:"interaction_plot", note:"Perfil de medias estimadas por el modelo, con las trayectorias individuales de cada sujeto en segundo plano."} },
+    res_gee_binario:{ type:"result", testId:"gee_binario", justification:"Tu resultado es binario, tus datos están agrupados o repetidos, y tu interés principal es el efecto promedio en la población: usa GEE binaria.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios promedio poblacionales (exp(β)) y sus IC95% robustos por predictor."} },
+    res_glmm_logistico:{ type:"result", testId:"glmm_logistico", justification:"Tu resultado es binario, tus datos están agrupados o repetidos, y te interesa el efecto específico de cada sujeto/grupo: usa un modelo logístico mixto.", chart:{id:"forest_plot", note:"Forest plot con los odds ratios específicos de sujeto (exp(β)) y sus IC95% por predictor."} },
+    res_glmm_conteo:{ type:"result", testId:"glmm_conteo", justification:"Tu resultado es un recuento de eventos y tus datos están agrupados o repetidos: usa un modelo de conteo mixto (Poisson o binomial negativa con efectos aleatorios), que evita la pseudorreplicación de tratar las observaciones como independientes.", chart:{id:"forest_plot", note:"Forest plot con las razones de tasas específicas de sujeto (exp(β)) y sus IC95% por predictor."} },
     res_dunnett:{ type:"result", testId:"dunnett", justification:"Quieres comparar varios grupos de tratamiento frente a un único grupo control, no entre sí: el test de Dunnett ajusta el error Tipo I específicamente para ese tipo de comparación.", chart:{id:"boxplot", note:"Boxplot de todos los grupos con una línea de referencia en la media del grupo control."} },
     res_anova_2f:{ type:"result", testId:"anova_2f", justification:"Comparas grupos definidos por dos o más factores cruzados, sin anidamiento ni medidas repetidas, y se cumplen normalidad y homocedasticidad: usa el ANOVA de dos vías.", chart:{id:"interaction_plot", note:"Imprescindible para visualizar si existe interacción entre ambos factores."} },
     res_anova_2f_caution:{ type:"guidance", title:"Revisa los supuestos antes de interpretar el ANOVA factorial",
@@ -1079,10 +1155,25 @@
       proposito:"Controla la tasa de falsos descubrimientos (proporción esperada de falsos positivos entre los resultados significativos), en vez del error familywise estricto.",
       formula:"p₍ₖ₎ ≤ "+frac("k","m")+" · α",
       formulaNote:"Se ordenan los p-valores de menor a mayor y se busca el mayor k que cumple la desigualdad",
-      notas:"Estándar en análisis con muchas comparaciones simultáneas (ej. genómica, múltiples biomarcadores); mucho más potente que Bonferroni." }
+      notas:"Estándar en análisis con muchas comparaciones simultáneas (ej. genómica, múltiples biomarcadores); mucho más potente que Bonferroni." },
+    { id:"casos_completos", name:"Análisis por casos completos (listwise deletion)", tipo:"datos_faltantes",
+      proposito:"Elimina cualquier sujeto con al menos un valor faltante en las variables del modelo. Es el método por defecto de muchos programas, pero sesga las estimaciones si los datos no faltan completamente al azar, y siempre reduce la potencia estadística.",
+      formula:"n<sub>análisis</sub> = n<sub>total</sub> − n<sub>con algún valor faltante</sub>",
+      formulaNote:"No hay ajuste estadístico: simplemente se descartan los casos incompletos, sin usar la información parcial que sí aportan.",
+      notas:"Solo es válido bajo el supuesto MCAR (missing completely at random) — poco realista en la mayoría de estudios observacionales. No lo uses por defecto sin antes evaluar el porcentaje y el patrón de valores faltantes." },
+    { id:"imputacion_multiple", name:"Imputación múltiple (Multiple Imputation)", tipo:"datos_faltantes",
+      proposito:"Genera varios conjuntos de datos completos (habitualmente 20-50) rellenando los valores faltantes según su distribución condicional a partir de las demás variables, analiza cada conjunto por separado, y combina los resultados para obtener estimaciones e IC que incorporan la incertidumbre de la imputación.",
+      formula:"θ̄ = "+frac("1","m")+"Σθ̂ᵢ &nbsp;&nbsp; Varianza total = Var. intra-imputación + (1+1/m)·Var. entre-imputaciones",
+      formulaNote:"m: número de conjuntos de datos imputados · las reglas de Rubin combinan las m estimaciones y propagan correctamente la incertidumbre de no conocer los valores verdaderos.",
+      notas:"Válida bajo el supuesto MAR (missing at random: la probabilidad de faltar depende de variables observadas, no del propio valor faltante). Incluye variables auxiliares relacionadas con la ausencia, aunque no formen parte del modelo final, para hacer el supuesto MAR más plausible." },
+    { id:"sensibilidad_faltantes", name:"Análisis de sensibilidad para datos faltantes", tipo:"datos_faltantes",
+      proposito:"Evalúa si las conclusiones del análisis principal (habitualmente basado en MAR) se mantienen bajo supuestos alternativos y menos favorables sobre por qué faltan los datos — incluyendo la posibilidad de que falten de forma no aleatoria (MNAR).",
+      formula:"θ̃ = θ̂ + δ",
+      formulaNote:"δ: desplazamiento asumido en los valores faltantes respecto a lo que predice el modelo de imputación, variado en un rango plausible para simular escenarios «peores» (pattern-mixture / δ-adjustment).",
+      notas:"Especialmente importante en ensayos clínicos con pérdidas durante el seguimiento: comprueba si la conclusión se mantiene si los pacientes perdidos hubieran evolucionado peor que los observados." }
   ];
-  var DIAG_LABEL = { normalidad:"Normalidad", homocedasticidad:"Homocedasticidad", correccion:"Correcciones y ajustes" };
-  var DIAG_BADGE_CAT = { normalidad:"parametrica", homocedasticidad:"no_parametrica", correccion:"regresion" };
+  var DIAG_LABEL = { normalidad:"Normalidad", homocedasticidad:"Homocedasticidad", correccion:"Correcciones y ajustes", datos_faltantes:"Datos faltantes" };
+  var DIAG_BADGE_CAT = { normalidad:"parametrica", homocedasticidad:"no_parametrica", correccion:"regresion", datos_faltantes:"supervivencia" };
 
   /* ============================================================
      4. DICCIONARIO · SECCIÓN D — TRANSFORMACIONES DE DATOS
@@ -1261,6 +1352,7 @@
     anova_2f:{ varTypes:["discreta","continua"], groups:"any", design:"independientes", normality:true, homoscedasticity:true },
     anova_mixto:{ varTypes:["discreta","continua"], groups:"any", design:"pareadas", normality:true, homoscedasticity:true, sphericity:true, missingAllowed:false, designSwap:{id:"anova_2f", when:"independientes"} },
     mixed_model:{ varTypes:["discreta","continua"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
+    gee_continuo:{ varTypes:["discreta","continua"], groups:"any", design:"any", normality:false, homoscedasticity:false, nested:true, missingAllowed:false },
     chi2:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"mcnemar", when:"pareadas"} },
     fisher:{ varTypes:["nominal","ordinal"], groups:"na", design:"independientes", normality:false, homoscedasticity:false, designSwap:{id:"mcnemar", when:"pareadas"} },
     mcnemar:{ varTypes:["nominal"], groups:2, design:"pareadas", normality:false, homoscedasticity:false, designSwap:{id:"chi2", when:"independientes"} },
@@ -1270,11 +1362,14 @@
     reg_lineal_simple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
     reg_lineal_multiple:{ varTypes:["discreta","continua"], groups:"na", design:"na", normality:true, homoscedasticity:true },
     reg_logistica:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    gee_binario:{ varTypes:["nominal"], groups:"any", design:"any", normality:false, homoscedasticity:false, nested:true, missingAllowed:false },
+    glmm_logistico:{ varTypes:["nominal"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
     reg_logistica_ordinal:{ varTypes:["ordinal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_multinomial:{ varTypes:["nominal"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_poisson:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false, overdispersionSensitive:true },
     reg_binomial_negativa:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     reg_zeroinflated:{ varTypes:["discreta"], groups:"na", design:"na", normality:false, homoscedasticity:false },
+    glmm_conteo:{ varTypes:["discreta"], groups:"any", design:"any", normality:true, homoscedasticity:false, nested:true, missingAllowed:true },
     logrank:{ varTypes:["tiempo_evento"], groups:"any", design:"independientes", normality:false, homoscedasticity:false },
     cox:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
     cox_estratificado:{ varTypes:["tiempo_evento"], groups:"na", design:"na", normality:false, homoscedasticity:false },
@@ -1407,6 +1502,10 @@
       '<span class="effect-name">'+escapeHtml(test.effect.name)+'</span>'+
       '<p>'+escapeHtml(test.effect.note)+' Preséntalo siempre junto a su intervalo de confianza del 95% — el p-valor por sí solo no comunica la magnitud del efecto.</p></div>';
   }
+  function multiplicityBlockHtml(test){
+    if(!test.multiplicity) return "";
+    return '<div class="multi-box"><span class="alt-label">Comparaciones múltiples</span><p>'+escapeHtml(test.multiplicity)+'</p></div>';
+  }
   function badgeRowHtml(test){
     var html = badge(test.category, test.paradigm);
     if(test.category !== "parametrica" && test.category !== "no_parametrica"){ html += badge(test.category, CATEGORY_LABEL[test.category]); }
@@ -1465,7 +1564,7 @@
           '<h2 class="result-name">'+escapeHtml(test.name)+'</h2>'+
           badgeRowHtml(test)+
           '<p class="result-just">'+escapeHtml(node.justification)+'</p>'+
-          altHtml + effectBlockHtml(test) + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
+          altHtml + effectBlockHtml(test) + multiplicityBlockHtml(test) + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
           '<div class="result-actions">'+
             '<button class="btn btn-primary" id="wiz-view-detail" type="button">Ver en Diccionario<svg><use href="#i-arrow"/></svg></button>'+
             '<button class="btn btn-ghost" id="wiz-restart-2" type="button"><svg><use href="#i-restart"/></svg>Volver a empezar</button>'+
@@ -1564,6 +1663,7 @@
       '<h4>Fórmula</h4><div class="formula-box">'+test.formula+'</div><p class="formula-note">'+escapeHtml(test.formulaNote)+'</p>'+
       '<h4>Requisitos / supuestos previos</h4><ul class="assump-list">'+test.assumptions.map(function(a){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>';}).join("")+'</ul>'+
       (test.effect ? '<h4>Tamaño del efecto</h4><p><b>'+escapeHtml(test.effect.name)+'.</b> '+escapeHtml(test.effect.note)+' Preséntalo siempre con su IC 95%.</p>' : '')+
+      (test.multiplicity ? '<h4>Comparaciones múltiples</h4><p>'+escapeHtml(test.multiplicity)+'</p>' : '')+
       relatedHtml;
   }
   function matchesSearch(hayFields, q){ if(!q) return true; q=q.toLowerCase(); return hayFields.join(" ").toLowerCase().indexOf(q)!==-1; }
@@ -1629,7 +1729,7 @@
   var diagGrid = document.getElementById("diag-grid");
   var diagFiltersEl = document.getElementById("diag-filters");
   var diagOpen = {}; var diagFilter = "all";
-  var DIAG_FILTERS = [{id:"all",label:"Todas"},{id:"normalidad",label:"Normalidad"},{id:"homocedasticidad",label:"Homocedasticidad"},{id:"correccion",label:"Correcciones y ajustes"}];
+  var DIAG_FILTERS = [{id:"all",label:"Todas"},{id:"normalidad",label:"Normalidad"},{id:"homocedasticidad",label:"Homocedasticidad"},{id:"correccion",label:"Correcciones y ajustes"},{id:"datos_faltantes",label:"Datos faltantes"}];
   function renderDiagFilters(){
     diagFiltersEl.innerHTML = DIAG_FILTERS.map(function(f){
       return '<button type="button" class="chip" data-dfilter="'+f.id+'" aria-pressed="'+(diagFilter===f.id)+'">'+f.label+'</button>';
