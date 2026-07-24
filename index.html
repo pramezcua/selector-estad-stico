@@ -1516,39 +1516,57 @@
     { id:"boxplot", name:"Boxplot (diagrama de caja y bigotes)", tag:"comparacion",
       desc:"Resume la mediana, los cuartiles (rango intercuartílico) y los valores atípicos de una distribución.",
       cuando:["Comparar la distribución de una variable continua entre 2 o más grupos.","Detectar outliers de forma rápida y visual."],
-      practicas:["Superpón los puntos individuales (jitter) cuando n &lt; 30, para no ocultar la distribución real de los datos.","No uses boxplots para muestras muy pequeñas (n &lt; 5 por grupo) sin mostrar los puntos: la caja puede ser engañosa."] },
+      practicas:["Superpón los puntos individuales (jitter) cuando n &lt; 30, para no ocultar la distribución real de los datos.","No uses boxplots para muestras muy pequeñas (n &lt; 5 por grupo) sin mostrar los puntos: la caja puede ser engañosa."],
+      relacionadas:["t de Welch","t de Student independiente","ANOVA de un factor","Mann-Whitney","Kruskal-Wallis"],
+      rcode:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_boxplot(outlier.shape = NA) +\n  geom_jitter(width = .1, alpha = .5) +\n  theme_minimal()' },
     { id:"violin", name:"Violin Plot", tag:"comparacion",
       desc:"Combina un boxplot con una estimación de densidad de kernel, mostrando la forma completa de la distribución.",
       cuando:["Cuando además de comparar medianas/cuartiles quieres ver si la distribución es bimodal o muy asimétrica.","Muestras moderadas o grandes por grupo."],
-      practicas:["Combínalo con un boxplot interno o con los puntos individuales para no perder la información de dispersión exacta.","Con n muy pequeño, la densidad estimada no es fiable — usa un boxplot con puntos en su lugar."] },
+      practicas:["Combínalo con un boxplot interno o con los puntos individuales para no perder la información de dispersión exacta.","Con n muy pequeño, la densidad estimada no es fiable — usa un boxplot con puntos en su lugar."],
+      relacionadas:["Mann-Whitney","Kruskal-Wallis","t de Welch","ANOVA de un factor"],
+      rcode:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_violin(alpha = .3) +\n  geom_jitter(width = .1, alpha = .5) +\n  theme_minimal()' },
     { id:"barplot_error", name:"Barplot con barras de error (DE / SEM / IC95%)", tag:"comparacion",
       desc:"Representa medias (o frecuencias) por grupo, con una barra de error que indica dispersión o incertidumbre.",
       cuando:["Comparar medias entre grupos cuando la variable es aproximadamente normal.","Representar frecuencias o proporciones de una variable categórica entre grupos."],
-      practicas:["Especifica siempre qué representa la barra de error: DE (dispersión de los datos) ≠ SEM (precisión de la media) ≠ IC95%.","Evítalo con datos no normales o con outliers — usa boxplot o violin plot, que no ocultan la forma real de la distribución."] },
+      practicas:["Especifica siempre qué representa la barra de error: DE (dispersión de los datos) ≠ SEM (precisión de la media) ≠ IC95%.","Evítalo con datos no normales o con outliers — usa boxplot o violin plot, que no ocultan la forma real de la distribución."],
+      relacionadas:["Chi-cuadrado de independencia","Test exacto de Fisher"],
+      rcode:'library(ggplot2)\n# Medias + IC95% (variable continua):\nresumen <- aggregate(resultado ~ grupo, data = datos, FUN = function(x) c(media = mean(x), n = length(x), de = sd(x)))\nggplot(datos, aes(grupo, resultado)) +\n  stat_summary(fun = mean, geom = "col", fill = "steelblue", alpha = .7) +\n  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = .15) +\n  theme_minimal()\n# Frecuencias/proporciones (variable categorica): ver ficha de Chi-cuadrado' },
     { id:"scatter_plot", name:"Scatter Plot (diagrama de dispersión)", tag:"asociacion",
       desc:"Representa cada observación como un punto según los valores de dos variables continuas.",
       cuando:["Evaluar visualmente la relación entre dos variables cuantitativas.","Visualizar el ajuste de una regresión lineal simple."],
-      practicas:["Añade la línea de tendencia con su intervalo de confianza.","Usa transparencia (alpha) si hay muchos puntos solapados, y revisa visualmente los outliers influyentes."] },
+      practicas:["Añade la línea de tendencia con su intervalo de confianza.","Usa transparencia (alpha) si hay muchos puntos solapados, y revisa visualmente los outliers influyentes."],
+      relacionadas:["Correlación de Pearson","Correlación de Spearman","Regresión lineal simple"],
+      rcode:'library(ggplot2)\nggplot(datos, aes(var1, var2)) +\n  geom_point(alpha = .6) +\n  geom_smooth(method = "lm", se = TRUE) +\n  theme_minimal()' },
     { id:"interaction_plot", name:"Interaction Plot (gráfico de interacción)", tag:"comparacion",
       desc:"Muestra las medias de cada combinación de niveles de dos (o más) factores, o por momento temporal en medidas repetidas.",
       cuando:["Imprescindible en ANOVA de dos vías y modelos mixtos, para visualizar si existe interacción entre factores.","Perfiles de medidas repetidas a lo largo del tiempo."],
-      practicas:["Incluye barras de error en cada punto.","Evita más de 3–4 líneas simultáneas (se satura visualmente) — usa paneles (facets) si hay muchas condiciones."] },
+      practicas:["Incluye barras de error en cada punto.","Evita más de 3–4 líneas simultáneas (se satura visualmente) — usa paneles (facets) si hay muchas condiciones."],
+      relacionadas:["ANOVA de dos vías","ANOVA Mixto","Modelo Mixto"],
+      rcode:'library(ggplot2)\nggplot(datos, aes(factor1, resultado, color = factor2, group = factor2)) +\n  stat_summary(fun = mean, geom = "line") +\n  stat_summary(fun.data = mean_cl_normal, geom = "errorbar", width = .1) +\n  theme_minimal()' },
     { id:"histogram_qq", name:"Histograma y Gráfico Q-Q", tag:"diagnostico",
       desc:"El histograma muestra la forma de la distribución; el gráfico Q-Q compara los cuantiles muestrales con los teóricos de una normal.",
       cuando:["Evaluación visual de la normalidad antes de elegir entre una prueba paramétrica o no paramétrica."],
-      practicas:["Complementa siempre con un test formal (Shapiro-Wilk).","No confíes solo en el histograma con muestras pequeñas — su forma es muy inestable con poca n."] },
+      practicas:["Complementa siempre con un test formal (Shapiro-Wilk).","No confíes solo en el histograma con muestras pequeñas — su forma es muy inestable con poca n."],
+      relacionadas:["Todas las pruebas paramétricas (t, ANOVA, ANCOVA, regresión lineal)"],
+      rcode:'library(ggplot2)\nggplot(datos, aes(resultado)) + geom_histogram(bins = 30) + theme_minimal()\nggplot(datos, aes(sample = resultado)) + stat_qq() + stat_qq_line() + theme_minimal()' },
     { id:"heatmap", name:"Heatmap (mapa de calor)", tag:"asociacion",
       desc:"Representa una matriz de valores (habitualmente correlaciones) mediante una escala de color.",
       cuando:["Visualizar de un vistazo las correlaciones entre muchas variables cuantitativas."],
-      practicas:["Usa una paleta divergente centrada en 0 (rojo-blanco-azul).","Ordena las variables por clustering jerárquico y marca la significación con asteriscos."] },
+      practicas:["Usa una paleta divergente centrada en 0 (rojo-blanco-azul).","Ordena las variables por clustering jerárquico y marca la significación con asteriscos."],
+      relacionadas:["Correlación de Pearson","Correlación de Spearman"],
+      rcode:'library(ggplot2); library(reshape2)\nmat_cor <- cor(datos[, c("var1","var2","var3")], use = "pairwise.complete.obs")\nggplot(melt(mat_cor), aes(Var1, Var2, fill = value)) +\n  geom_tile() +\n  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +\n  theme_minimal()' },
     { id:"forest_plot", name:"Forest Plot", tag:"riesgo",
       desc:"Representa estimaciones puntuales (odds ratios, hazard ratios, diferencias de medias) con su intervalo de confianza, una por fila.",
       cuando:["Meta-análisis.","Mostrar los odds ratios de una regresión logística o los hazard ratios de una regresión de Cox."],
-      practicas:["Marca una línea de referencia vertical en 1 (OR/HR) o en 0 (diferencias de medias).","Usa escala logarítmica para OR/HR y ordena las filas por tamaño de efecto."] },
+      practicas:["Marca una línea de referencia vertical en 1 (OR/HR) o en 0 (diferencias de medias).","Usa escala logarítmica para OR/HR y ordena las filas por tamaño de efecto."],
+      relacionadas:["Regresión logística","Regresión de Cox","Cox estratificado"],
+      rcode:'library(ggplot2)\n# resumen_modelo: data.frame con columnas variable, estimado, ic_inf, ic_sup\nggplot(resumen_modelo, aes(x = estimado, y = variable)) +\n  geom_point() +\n  geom_errorbarh(aes(xmin = ic_inf, xmax = ic_sup), height = .2) +\n  geom_vline(xintercept = 1, linetype = "dashed") +   # OR/HR: referencia en 1 (usa 0 si son diferencias de medias)\n  scale_x_log10() +\n  theme_minimal()\n# Para un modelo de Cox, tambien puedes usar directamente: survminer::ggforest(modelo, data = datos)' },
     { id:"kaplan_meier", name:"Curva de Kaplan-Meier", tag:"riesgo",
       desc:"Representa la probabilidad de supervivencia (o de estar libre de evento) acumulada a lo largo del tiempo.",
       cuando:["Visualizar y comparar curvas de supervivencia entre grupos, habitualmente junto a un test de log-rank."],
-      practicas:["Muestra siempre el intervalo de confianza de cada curva.","Indica el número de sujetos en riesgo bajo el eje temporal, y marca las censuras."] }
+      practicas:["Muestra siempre el intervalo de confianza de cada curva.","Indica el número de sujetos en riesgo bajo el eje temporal, y marca las censuras."],
+      relacionadas:["Test de Log-Rank","Regresión de Cox"],
+      rcode:'library(survival); library(survminer)\najuste <- survfit(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nggsurvplot(ajuste, data = datos, risk.table = TRUE, conf.int = TRUE,\n           xlab = "Tiempo", ylab = "Probabilidad de supervivencia")' }
   ];
   var CHART_TAG_LABEL = { comparacion:"Comparación de grupos", asociacion:"Asociación y correlación", diagnostico:"Diagnóstico de supuestos", riesgo:"Regresión y riesgo" };
   var CHART_TAG_CAT = { comparacion:"parametrica", asociacion:"asociacion", diagnostico:"no_parametrica", riesgo:"regresion" };
@@ -2096,6 +2114,8 @@
         '<div class="xcard-body">'+
           '<h4>Cuándo usarlo</h4><ul class="uses-list">'+c.cuando.map(function(u){return '<li>'+u+'</li>';}).join("")+'</ul>'+
           '<h4>Buenas prácticas científicas</h4><ul class="assump-list">'+c.practicas.map(function(p){return '<li><svg><use href="#i-check"/></svg><span>'+p+'</span></li>';}).join("")+'</ul>'+
+          (c.relacionadas ? '<h4>Pruebas que suelen usarlo</h4><p style="font-size:.87rem; color:var(--text-muted); line-height:1.6;">'+c.relacionadas.join(" · ")+'</p>' : '')+
+          (c.rcode ? '<h4>Código R</h4><div class="formula-box" id="chart-rcode-'+c.id+'" style="font-size:.82rem; white-space:pre;">'+escapeHtml(c.rcode)+'</div><button type="button" class="text-btn rcode-copy" data-copy-id="chart-rcode-'+c.id+'"><svg><use href="#i-check"/></svg>Copiar</button>' : '')+
         '</div></article>';
     }).join("");
   }
