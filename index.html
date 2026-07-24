@@ -151,9 +151,9 @@
   .multi-box{ background:var(--cat-regresion-soft); border:1px solid var(--border); border-radius:var(--radius); padding:.9rem 1rem; margin-bottom:1.2rem; }
   .multi-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--cat-regresion); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
   .multi-box p{ font-size:.88rem; line-height:1.55; color:var(--text); }
-  .rcode-tabnav{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.7rem; }
-  .rcode-tab-btn{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.35rem .75rem; border-radius:999px; font-size:.76rem; font-weight:700; cursor:pointer; }
-  .rcode-tab-btn[aria-selected="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .rcode-tabnav, .ssres-tabnav{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.7rem; }
+  .rcode-tab-btn, .ssres-tab-btn{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.35rem .75rem; border-radius:999px; font-size:.76rem; font-weight:700; cursor:pointer; }
+  .rcode-tab-btn[aria-selected="true"], .ssres-tab-btn[aria-selected="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
   .rcode-tabpanel .text-btn{ margin-top:.4rem; }
   .posthoc-chip{ text-align:left; }
   .req-block{ margin-top:1.2rem; }
@@ -295,6 +295,17 @@
   .ss-table th{ color:var(--text-muted); font-weight:600; white-space:nowrap; }
   .ss-table thead th{ font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
   .ss-sens-chart{ width:100%; height:auto; margin-top:1rem; }
+  .ss-help-toggles{ display:flex; flex-wrap:wrap; gap:.6rem; margin:.5rem 0 .3rem; }
+  .ss-term-link{ background:none; border:none; padding:0; margin:0; font:inherit; color:var(--accent); text-decoration:underline; text-decoration-style:dotted; text-underline-offset:.15em; cursor:pointer; }
+  .ss-flow{ display:flex; flex-wrap:wrap; align-items:center; gap:.4rem; margin-top:.8rem; }
+  .ss-flow-step{ background:var(--surface-2); border:1px solid var(--border); border-radius:999px; padding:.4rem .85rem; font-size:.8rem; font-weight:600; color:var(--text); white-space:nowrap; }
+  .ss-flow-arrow{ width:14px; height:14px; flex:none; color:var(--text-muted); }
+  .ss-example-card .xcard-def{ color:var(--text-muted); }
+  #ssgloss-modal .modal-panel{ max-width:620px; }
+  .ss-gloss-list dt{ font-weight:700; margin-top:1.1rem; scroll-margin-top:1rem; }
+  .ss-gloss-list dt:first-child{ margin-top:0; }
+  .ss-gloss-list dd{ margin:.25rem 0 0; color:var(--text-muted); font-size:.9rem; line-height:1.55; }
+  .ss-gloss-list dt.ss-gloss-active{ color:var(--accent); }
 
   /* ============ BUZÓN DE SUGERENCIAS ============ */
   .fab-suggest{ position:fixed; right:1.25rem; bottom:1.25rem; z-index:40; background:var(--accent); color:#fff; border:none; border-radius:999px; padding:.8rem 1.15rem; display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:.85rem; cursor:pointer; box-shadow:var(--shadow-md); }
@@ -457,6 +468,15 @@
         <button type="button" class="btn btn-ghost" id="plan-back"><svg><use href="#i-back"/></svg>Volver a editar</button>
       </div>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="ssgloss-modal" hidden>
+  <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="ssgloss-title">
+    <button type="button" class="icon-btn modal-close" id="ssgloss-close" aria-label="Cerrar"><svg><use href="#i-x"/></svg></button>
+    <h2 id="ssgloss-title">Glosario de tamaño muestral</h2>
+    <p class="q-help">Definiciones sencillas de los términos que aparecen en el cálculo de tamaño muestral.</p>
+    <dl class="ss-gloss-list" id="ssgloss-list"></dl>
   </div>
 </div>
 
@@ -2705,9 +2725,9 @@
   var ssStep = 0;           // 0 = entrada/selección de modo, 1..7 = pasos
   var ssMode = null;        // "priori" | "achieved"
   var ssShowHelp = false;   // "¿Qué necesito antes de empezar?"
-  var ssShowEffectHelp = false; // "¿Cómo obtengo este valor?"
   var ssSensOpen = false;
   var ssRcodeOpen = false;
+  var ssResultTab = "simple"; // "simple" | "guided" | "technical"
   var ssAnswers = {
     studyType: null, dropoutPct: "0", expUnit: null, expUnitOther: "", animalsPerUnit: "",
     studyTitle: "", objective: "", varName: "", varUnit: "", varType: null,
@@ -2727,6 +2747,179 @@
   var ssShell = document.getElementById("ssize-shell");
 
   var SS_STEP_LABELS = ["Tipo de estudio","Objetivo y variable","Diseño","Efecto esperado","Parámetros estadísticos","Pérdidas previstas","Resultado"];
+
+  /* ============================================================
+     17B. CÁLCULO DE TAMAÑO MUESTRAL — CONTENIDO EDUCATIVO
+  ============================================================ */
+  var ssHelpOpen = {};      // ssHelpOpen["alfa_why"], ssHelpOpen["alfa_example"], ...
+  var ssIntroOpen = false;  // "¿Qué vamos a calcular y por qué?"
+  var ssExamplesOpen = false;
+  var ssGlossaryTerm = null; // término al que hay que hacer scroll al abrir el modal
+
+  var SS_HELP = {
+    unidad_experimental: {
+      brief: "La unidad experimental es la unidad mínima que puede recibir una intervención de manera independiente y asignarse a una condición experimental.",
+      why: "Diez imágenes, cortes, pocillos o mediciones de un mismo animal no equivalen a diez animales independientes: son normalmente submuestras o réplicas técnicas. Tratarlas como observaciones independientes infla artificialmente el tamaño muestral real (pseudorreplicación).",
+      example: "Tratamiento aplicado individualmente → el animal puede ser la unidad. Tratamiento en el agua de una jaula → la jaula puede ser la unidad. Tratamiento durante la gestación → la camada puede ser la unidad relevante."
+    },
+    disenio_indep_pareado: {
+      brief: "En grupos independientes, cada participante o animal pertenece solo a un grupo. En datos emparejados, las mediciones están relacionadas: mismos sujetos antes y después, dos mediciones del mismo animal, o parejas emparejadas por características.",
+      why: "Los diseños emparejados pueden necesitar menos muestra cuando las mediciones del mismo sujeto están correlacionadas, pero requieren un cálculo específico — no se puede usar la fórmula de grupos independientes.",
+      example: "Un grupo recibe tratamiento y un grupo distinto recibe placebo → grupos independientes. Se mide la presión arterial de los mismos pacientes antes y después del tratamiento → datos emparejados."
+    },
+    mde: {
+      brief: "La diferencia mínima relevante es el cambio más pequeño que seguiría teniendo importancia clínica, biológica o práctica — no la diferencia que esperas obtener en el mejor de los casos.",
+      why: "Debe introducirse en las unidades originales de la variable y justificarse con literatura científica, metaanálisis, datos históricos, un estudio piloto o criterio clínico o biológico. No elijas una diferencia muy grande solamente para obtener una muestra pequeña.",
+      example: "Ejemplos habituales: 5 mmHg de presión arterial, 3 puntos en una escala clínica, 10 % de expresión proteica, 2 kg de pérdida de peso."
+    },
+    sd: {
+      brief: "La desviación estándar indica cuánto se separan habitualmente los valores individuales respecto a la media: pequeña si los sujetos son parecidos, grande si son muy distintos entre sí. Cuanta mayor sea la variabilidad, mayor será normalmente la muestra necesaria.",
+      why: "Puede obtenerse de artículos similares, datos históricos, estudios piloto, metaanálisis, o de intervalos y rangos convertibles con cautela.",
+      example: "Dos estudios pueden esperar una diferencia de 10 unidades entre grupos. Si la desviación estándar es 5, esa diferencia será muy clara. Si es 30, la misma diferencia será mucho más difícil de detectar."
+    },
+    cohen_d: {
+      brief: "La d de Cohen expresa la diferencia entre dos medias en unidades de desviación estándar: d = diferencia entre las medias / desviación estándar común. Una d = 0,50 significa que las medias están separadas por una distancia equivalente a media desviación estándar.",
+      why: "Como orientación, nunca como elección automática: d = 0,20 efecto pequeño; d = 0,50 moderado; d = 0,80 grande. Son valores orientativos — la importancia clínica o biológica debe valorarse en las unidades originales y según el contexto; estos puntos de corte no la determinan por sí solos.",
+      example: "Dos grupos con medias 120 y 110 y una desviación estándar común de 20 tienen d = |120−110| / 20 = 0,50 (efecto moderado, orientativamente)."
+    },
+    cohen_f: {
+      brief: "La f de Cohen resume cuánto varían entre sí las medias de los grupos en relación con la variabilidad dentro de cada grupo.",
+      why: "Como orientación, nunca como elección automática: f = 0,10 efecto pequeño; f = 0,25 moderado; f = 0,40 grande. Son valores orientativos que dependen del contexto.",
+      example: "Si las medias de tus grupos están poco dispersas entre sí en comparación con la variabilidad dentro de cada grupo, la f de Cohen será pequeña, y necesitarás una muestra mayor para detectar esa diferencia."
+    },
+    alfa: {
+      brief: "El nivel de significación alfa es el riesgo máximo que aceptamos de concluir que existe un efecto cuando realmente no existe.",
+      why: "Reducir alfa disminuye el riesgo de falsos positivos, pero aumenta el tamaño muestral necesario. El valor habitual es 0,05 (un 5 %), y debe fijarse antes de analizar los resultados, no después.",
+      example: "Si no existiera ninguna diferencia real y se repitieran muchos estudios equivalentes, un alfa de 0,05 permitiría obtener un resultado estadísticamente significativo por azar en aproximadamente 5 de cada 100 estudios."
+    },
+    potencia: {
+      brief: "La potencia representa la capacidad del estudio para detectar el efecto que has definido si realmente existe.",
+      why: "Al aumentar la potencia, aumenta la muestra necesaria; al disminuirla, la muestra baja pero crece el riesgo de un falso negativo. Potencia = 1 − beta: con 80 % de potencia aceptas un 20 % de riesgo de no detectar el efecto (beta); con 90 %, un 10 %; con 95 %, un 5 %.",
+      example: "Si un estudio se diseña con una potencia del 80 % y el efecto especificado existe realmente, aproximadamente 80 de cada 100 estudios equivalentes obtendrían un resultado estadísticamente significativo."
+    },
+    contraste: {
+      brief: "El contraste bilateral permite detectar que el tratamiento produzca valores mayores o menores que el control; el unilateral busca el efecto únicamente en una dirección establecida antes de analizar los datos.",
+      why: "No selecciones un contraste unilateral solo porque requiere menos muestra. Debe estar científicamente justificado y decidido antes de analizar los datos — nunca elegido después de ver los resultados.",
+      example: "\"El tratamiento reduce la presión arterial\" (nunca la aumenta) → podría justificar un contraste unilateral si una subida de presión careciera de cualquier interés. \"El tratamiento cambia la presión arterial, en cualquier sentido\" → contraste bilateral, la opción por defecto."
+    },
+    perdidas: {
+      brief: "Las pérdidas son participantes, animales o muestras que se incluyen inicialmente pero finalmente no pueden analizarse: abandono, pérdida de seguimiento, mortalidad, fallo técnico o muestra no evaluable.",
+      why: "El cálculo inicial da el número que debe completar el estudio (la muestra analizable). Por eso hay que incluir unidades adicionales para compensar las pérdidas previstas: N a incluir = N analizable / (1 − proporción de pérdidas).",
+      example: "Con 64 unidades analizables necesarias y un 10 % de pérdidas previstas: 64 / (1 − 0,10) = 71,1 → se redondea siempre hacia arriba, a 72."
+    }
+  };
+
+  function ssHelpBlock(key, opts){
+    var h = SS_HELP[key];
+    if(!h) return "";
+    opts = opts || {};
+    var out = '<p class="q-help">'+h.brief+'</p>';
+    out += '<div class="ss-help-toggles">';
+    out += '<button type="button" class="text-btn ss-help-toggle" data-ss-help="'+key+'_why"><svg><use href="#i-info"/></svg>¿Por qué necesito este dato?</button>';
+    if(h.example){
+      out += '<button type="button" class="text-btn ss-help-toggle" data-ss-help="'+key+'_example"><svg><use href="#i-file"/></svg>Ver ejemplo</button>';
+    }
+    out += '</div>';
+    if(ssHelpOpen[key+"_why"]) out += '<div class="consequence-box" style="margin-top:.6rem;"><p>'+h.why+'</p></div>';
+    if(h.example && ssHelpOpen[key+"_example"]) out += '<div class="consequence-box" style="margin-top:.6rem;"><p>'+h.example+'</p></div>';
+    return out;
+  }
+
+  var SS_GLOSSARY_ORDER = ["alfa","beta","potencia","error_tipo1","error_tipo2","tamano_efecto","mde","cohen_d","cohen_f","sd",
+    "unilateral","bilateral","unidad_experimental","replica_tecnica","replica_biologica","perdida",
+    "muestra_analizable","muestra_reclutar","modelo_estadistico","intervalo_confianza","precision","pseudorreplicacion"];
+  var SS_GLOSSARY = {
+    alfa: { term:"Alfa (nivel de significación)", def:"Riesgo máximo aceptado de concluir que existe un efecto cuando en realidad no existe (falso positivo). Se fija antes de analizar los datos; el valor habitual es 0,05." },
+    beta: { term:"Beta", def:"Riesgo aceptado de no detectar el efecto especificado aunque realmente exista (falso negativo). Potencia = 1 − beta." },
+    potencia: { term:"Potencia estadística", def:"Probabilidad de detectar el efecto especificado, si realmente existe, con el diseño y el tamaño muestral elegidos." },
+    error_tipo1: { term:"Error tipo I", def:"Concluir que existe un efecto cuando en realidad no existe. Su probabilidad máxima aceptada es alfa." },
+    error_tipo2: { term:"Error tipo II", def:"No detectar un efecto que realmente existe. Su probabilidad es beta." },
+    tamano_efecto: { term:"Tamaño del efecto", def:"Medida de la magnitud de una diferencia o asociación, independiente de las unidades originales (por ejemplo, d de Cohen, f de Cohen o r)." },
+    mde: { term:"Diferencia mínima relevante", def:"El cambio más pequeño que seguiría teniendo importancia clínica, biológica o práctica; es la magnitud que se usa para calcular la muestra." },
+    cohen_d: { term:"d de Cohen", def:"Tamaño del efecto para comparar dos medias, expresado en unidades de desviación estándar: d = diferencia entre medias / desviación estándar común." },
+    cohen_f: { term:"f de Cohen", def:"Tamaño del efecto para ANOVA: resume cuánto varían las medias de los grupos entre sí en relación con la variabilidad dentro de cada grupo." },
+    sd: { term:"Desviación estándar", def:"Mide cuánto se separan habitualmente los valores individuales respecto a la media del grupo." },
+    unilateral: { term:"Contraste unilateral", def:"Busca el efecto únicamente en una dirección establecida antes de analizar los datos (por ejemplo, solo \"mejora\")." },
+    bilateral: { term:"Contraste bilateral", def:"Permite detectar el efecto en cualquiera de las dos direcciones (valores mayores o menores que el control). Es la opción recomendada por defecto." },
+    unidad_experimental: { term:"Unidad experimental", def:"La unidad mínima que puede recibir una intervención de forma independiente y asignarse a una condición experimental (por ejemplo, un animal, una jaula o una camada)." },
+    replica_tecnica: { term:"Réplica técnica", def:"Repetición de la medición sobre la misma unidad experimental (por ejemplo, varias mediciones del mismo pocillo). No aporta observaciones independientes nuevas." },
+    replica_biologica: { term:"Réplica biológica", def:"Repetición del experimento en unidades experimentales biológicamente distintas (por ejemplo, animales diferentes). Sí aporta observaciones independientes." },
+    perdida: { term:"Pérdida o abandono", def:"Participante, animal o muestra incluido inicialmente en el estudio que finalmente no puede analizarse (abandono, mortalidad, fallo técnico…)." },
+    muestra_analizable: { term:"Muestra analizable", def:"El número de unidades que deben completar el estudio y ser analizadas para alcanzar la potencia deseada — el resultado directo del cálculo, antes de ajustar por pérdidas." },
+    muestra_reclutar: { term:"Muestra que reclutar", def:"El número de unidades que hay que incluir o reclutar al inicio del estudio para que, tras las pérdidas previstas, queden suficientes unidades analizables." },
+    modelo_estadistico: { term:"Modelo estadístico", def:"La forma matemática en que se relacionan el resultado, los grupos y otras variables del estudio; determina qué cálculo de tamaño muestral corresponde." },
+    intervalo_confianza: { term:"Intervalo de confianza", def:"Rango de valores plausibles para una estimación, calculado a partir de los datos, con un nivel de confianza determinado (habitualmente 95 %)." },
+    precision: { term:"Precisión", def:"Estrechez del intervalo de confianza o del margen de error de una estimación; una muestra mayor generalmente produce mayor precisión." },
+    pseudorreplicacion: { term:"Pseudorreplicación", def:"Tratar varias mediciones de una misma unidad experimental como si fueran observaciones independientes, lo que infla artificialmente el tamaño muestral real y el riesgo de falsos positivos." }
+  };
+  function ssTermLink(key, label){
+    if(!SS_GLOSSARY[key]) return escapeHtml(label);
+    return '<button type="button" class="ss-term-link" data-ss-term="'+key+'">'+escapeHtml(label)+'</button>';
+  }
+
+  var SS_EXAMPLES = [
+    { id:"ej_dos_grupos", title:"Ensayo con dos grupos de personas",
+      answers:{ studyType:"humanos", objective:"Comparar el efecto de un nuevo fármaco antihipertensivo frente a placebo sobre la presión arterial sistólica.",
+        varName:"presión arterial sistólica", varUnit:"mmHg", varType:"continua", design:"dos_indep",
+        m1:"140", m2:"132", sd:"15", effectSource:"Ensayos previos con fármacos de la misma familia.",
+        alpha:"0.05", powerPct:"80", tails:"bilateral", allocation:"1:1", dropoutPct:"10" } },
+    { id:"ej_antes_despues", title:"Estudio antes-después",
+      answers:{ studyType:"humanos", objective:"Evaluar si un programa de intervención nutricional de 12 semanas reduce el peso corporal en los mismos participantes.",
+        varName:"peso corporal", varUnit:"kg", varType:"continua", design:"pareado",
+        diffMean:"3", sdDiff:"6", effectSource:"Estudio piloto interno con 15 participantes.",
+        alpha:"0.05", powerPct:"80", tails:"bilateral", dropoutPct:"15" } },
+    { id:"ej_animales", title:"Experimento con animales",
+      answers:{ studyType:"animales", expUnit:"animal", objective:"Comparar el efecto de dos dosis de un compuesto experimental frente a control sobre el volumen tumoral en un modelo murino.",
+        varName:"volumen tumoral", varUnit:"mm³", varType:"continua", design:"anova", k:3, groupMeans:["250","190","140"], sdAnova:"80",
+        effectSource:"Datos históricos del laboratorio con el mismo modelo tumoral.",
+        alpha:"0.05", powerPct:"80", dropoutPct:"5" } },
+    { id:"ej_prevalencia", title:"Estimación de una prevalencia",
+      answers:{ studyType:"humanos", objective:"Estimar la prevalencia de la enfermedad X en la población de estudio con una precisión adecuada.",
+        varName:"presencia de la enfermedad X", varType:"proporcion", design:"prevalencia",
+        prevalence:"15", confidencePct:"95", marginErrorPct:"4", dropoutPct:"5" } }
+  ];
+  function ssExampleDefaults(){
+    return {
+      studyType: null, dropoutPct: "0", expUnit: null, expUnitOther: "", animalsPerUnit: "",
+      studyTitle: "", objective: "", varName: "", varUnit: "", varType: null,
+      design: null,
+      m1: "", m2: "", sd: "", advancedD: false, dInput: "",
+      diffMean: "", sdDiff: "", advancedDz: false, dzInput: "",
+      k: 3, groupMeans: ["","",""], sdAnova: "", advancedF: false, fInput: "",
+      p1: "", p2: "",
+      prevalence: "", confidencePct: "95", marginErrorPct: "",
+      corrR: "",
+      effectSource: "",
+      alpha: "0.05", powerPct: "80", powerCustomPct: "",
+      tails: "bilateral",
+      allocation: "1:1", allocationCustom: "",
+      ssAvailable: ""
+    };
+  }
+  // Calcula el resultado real de un ejemplo sin alterar el estado en curso del usuario
+  // (intercambia temporalmente ssAnswers/ssMode, calcula con las funciones reales, y restaura).
+  function ssPreviewExample(ex){
+    var merged = ssExampleDefaults();
+    Object.keys(ex.answers).forEach(function(k){ merged[k] = ex.answers[k]; });
+    var savedAnswers = ssAnswers, savedMode = ssMode, savedStep = ssStep;
+    ssAnswers = merged; ssMode = "priori"; ssStep = 7;
+    var res = ssComputeResult();
+    var out = { res: res, resultText: ssBuildResultText(res), interpretation: ssBuildInterpretation(res), methodText: ssBuildMethodologyText(res) };
+    ssAnswers = savedAnswers; ssMode = savedMode; ssStep = savedStep;
+    return out;
+  }
+  function ssLoadExample(exId){
+    var ex = SS_EXAMPLES.filter(function(e){ return e.id===exId; })[0];
+    if(!ex) return;
+    var merged = ssExampleDefaults();
+    Object.keys(ex.answers).forEach(function(k){ merged[k] = ex.answers[k]; });
+    ssAnswers = merged;
+    ssMode = "priori";
+    ssStep = 7;
+    ssExamplesOpen = false;
+    renderSSize();
+    ssShell.scrollIntoView({behavior:"smooth", block:"start"});
+  }
 
   function ssNum(v){ var n = parseFloat(String(v).replace(",",".")); return isNaN(n) ? null : n; }
   function ssPctToProp(v){ var n = ssNum(v); return n===null ? null : n/100; }
@@ -2883,6 +3076,67 @@
   }
 
   /* ---------- Renderers de cada paso ---------- */
+  var ssExampleCardOpen = {};
+
+  function ssIntroFlowHtml(){
+    var steps = ["Pregunta principal","Variable principal","Diseño del estudio","Análisis estadístico","Efecto relevante","Alfa y potencia","Tamaño muestral","Ajuste por pérdidas"];
+    return '<div class="ss-flow">'+steps.map(function(s,i){
+      return (i>0 ? '<svg class="ss-flow-arrow"><use href="#i-arrow"/></svg>' : '') + '<span class="ss-flow-step">'+s+'</span>';
+    }).join("")+'</div>';
+  }
+
+  function ssIntroPanelHtml(){
+    if(!ssIntroOpen) return "";
+    return '<div class="q-card" style="margin-top:1rem;">'+
+      '<h3>¿Qué vamos a calcular?</h3>'+
+      '<p class="q-help">El objetivo es estimar cuántas personas, animales o unidades experimentales necesitas para responder adecuadamente a la pregunta principal de tu estudio.</p>'+
+      '<h4 style="margin-top:1.2rem;">¿Por qué no se puede elegir la muestra directamente?</h4>'+
+      '<p class="q-help">El tamaño muestral depende de la diferencia que quieres detectar, de la variabilidad de los datos, del análisis estadístico, del nivel de significación, de la potencia y de las posibles pérdidas.</p>'+
+      '<h4 style="margin-top:1.2rem;">¿Qué ocurriría con una muestra demasiado pequeña?</h4>'+
+      '<ul class="uses-list">'+["Podría no detectar una diferencia que realmente existe.","Produciría estimaciones poco precisas.","Podría generar intervalos de confianza muy amplios.","Podría desperdiciar tiempo, recursos, participantes o animales."].map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>'+
+      '<h4 style="margin-top:1.2rem;">¿Qué ocurriría con una muestra innecesariamente grande?</h4>'+
+      '<ul class="uses-list">'+["Utilizaría más recursos de los necesarios.","Podría exponer innecesariamente a participantes o animales.","Podría detectar diferencias muy pequeñas que no tengan importancia clínica o biológica."].map(function(x){return '<li>'+x+'</li>';}).join("")+'</ul>'+
+      '<h4 style="margin-top:1.2rem;">El recorrido del cálculo</h4>'+
+      ssIntroFlowHtml()+
+      '</div>';
+  }
+
+  function ssExampleCardHtml(ex){
+    var open = !!ssExampleCardOpen[ex.id];
+    var prev = ssPreviewExample(ex);
+    var a = ex.answers;
+    var designLabel = { dos_indep:"Dos grupos independientes", pareado:"Datos emparejados (antes-después)", anova:"ANOVA de un factor", dos_prop:"Dos proporciones independientes", prevalencia:"Prevalencia / precisión", correlacion:"Correlación" }[a.design] || a.design;
+    var datosIntroducidos = [];
+    if(a.design==="dos_indep"){ datosIntroducidos.push("Media control: "+a.m1, "Media experimental: "+a.m2, "Desviación estándar: "+a.sd); }
+    else if(a.design==="pareado"){ datosIntroducidos.push("Diferencia media: "+a.diffMean, "Desviación estándar de las diferencias: "+a.sdDiff); }
+    else if(a.design==="anova"){ datosIntroducidos.push("Grupos ("+a.k+"): "+a.groupMeans.slice(0,a.k).join(" · "), "Desviación estándar común: "+a.sdAnova); }
+    else if(a.design==="prevalencia"){ datosIntroducidos.push("Prevalencia esperada: "+a.prevalence+" %", "Confianza: "+a.confidencePct+" %", "Margen de error: ±"+a.marginErrorPct+" pp"); }
+    return '<article class="xcard ss-example-card" data-open="'+open+'">'+
+      '<button type="button" class="xcard-head" data-ss-example-toggle="'+ex.id+'">'+
+        '<div class="xcard-top"><h3>'+escapeHtml(ex.title)+'</h3><svg><use href="#i-chevron"/></svg></div>'+
+        '<p class="xcard-def">'+escapeHtml(prev.resultText)+'</p>'+
+      '</button>'+
+      '<div class="xcard-body">'+
+        '<h4>Pregunta de investigación</h4><p class="q-help">'+escapeHtml(a.objective)+'</p>'+
+        '<h4>Variable principal</h4><p class="q-help">'+escapeHtml(a.varName)+(a.varUnit?' ('+escapeHtml(a.varUnit)+')':'')+'</p>'+
+        '<h4>Diseño</h4><p class="q-help">'+designLabel+'</p>'+
+        '<h4>Datos introducidos</h4><ul class="uses-list">'+datosIntroducidos.map(function(x){return '<li>'+escapeHtml(x)+'</li>';}).join("")+'</ul>'+
+        '<h4>Tamaño del efecto</h4><p class="q-help">'+(prev.res.effectLabel||"—")+'</p>'+
+        '<h4>Alfa / potencia / pérdidas</h4><p class="q-help">α = '+a.alpha+' · potencia = '+a.powerPct+' % · pérdidas = '+a.dropoutPct+' %</p>'+
+        '<h4>Resultado</h4><p class="q-help">'+escapeHtml(prev.resultText)+'</p>'+
+        '<h4>Interpretación</h4><p class="q-help">'+escapeHtml(prev.interpretation)+'</p>'+
+        '<h4>Texto para metodología</h4><p class="q-help">'+escapeHtml(prev.methodText)+'</p>'+
+        '<div class="result-actions"><button type="button" class="btn btn-primary" data-ss-load-example="'+ex.id+'">Cargar este ejemplo en la calculadora</button></div>'+
+      '</div></article>';
+  }
+
+  function ssExamplesPanelHtml(){
+    if(!ssExamplesOpen) return "";
+    return '<div style="margin-top:1rem; display:flex; flex-direction:column; gap:.9rem;">'+
+      SS_EXAMPLES.map(ssExampleCardHtml).join("")+
+      '</div>';
+  }
+
   function ssRenderEntry(){
     var helpPanel = !ssShowHelp ? "" :
       '<div class="q-card" style="margin-top:1rem;">'+
@@ -2906,10 +3160,14 @@
         '<div class="consequence-box" style="margin-top:1rem;"><p>El tamaño muestral debe calcularse antes de comenzar el estudio y debe basarse en el objetivo y el desenlace principal.</p></div>'+
         '<div class="result-actions">'+
           '<button type="button" class="btn btn-ghost" id="ss-toggle-help">¿Qué necesito antes de empezar?</button>'+
+          '<button type="button" class="btn btn-ghost" id="ss-toggle-intro">¿Qué vamos a calcular y por qué?</button>'+
+          '<button type="button" class="btn btn-ghost" id="ss-toggle-examples">Ver ejemplos completos</button>'+
+          '<button type="button" class="btn btn-ghost" id="ss-open-glossary">Glosario de tamaño muestral</button>'+
         '</div>'+
-      '</div>'+helpPanel+modeHtml+
+      '</div>'+helpPanel+ssIntroPanelHtml()+ssExamplesPanelHtml()+modeHtml+
       (ssMode ? '<div class="wizard-footer"><span></span><button class="btn btn-primary" id="ss-begin" type="button">Comenzar cálculo<svg><use href="#i-arrow"/></svg></button></div>' : "");
   }
+
 
   function ssRenderStep1(){
     var a = ssAnswers;
@@ -2921,12 +3179,12 @@
         }).join("")+
       '</div>';
     if(a.studyType==="animales"){
-      body += ssFieldGroup("¿Cuál es la unidad experimental?", ssChipRow("expUnit",
+      body += ssFieldGroup("¿Cuál es la "+ssTermLink("unidad_experimental","unidad experimental")+"?", ssChipRow("expUnit",
         [{v:"animal",l:"Animal individual"},{v:"jaula",l:"Jaula"},{v:"camada",l:"Camada"},{v:"grupo_tanque",l:"Grupo o tanque"},{v:"cultivo",l:"Cultivo o preparación biológica independiente"},{v:"otra",l:"Otra"}], a.expUnit));
       if(a.expUnit==="otra"){
         body += ssFieldGroup("Describe la unidad experimental", ssNumInput("ss-exp-unit-other", a.expUnitOther, "ej. réplica de placa"));
       }
-      body += '<div class="consequence-box"><p>Varias imágenes, cortes, pocillos o mediciones obtenidas del mismo animal no suelen constituir unidades experimentales independientes. Son normalmente submuestras o réplicas técnicas.</p></div>';
+      body += ssHelpBlock("unidad_experimental");
       body += ssFieldGroup("Animales por unidad experimental", ssNumInput("ss-animals-per-unit", a.animalsPerUnit, "ej. 4"), "opcional, para mostrar el total de animales");
     }
     body += '</div>';
@@ -2951,71 +3209,95 @@
       ssFieldGroup("¿Qué tipo de variable principal tienes?", ssChipRow("varType",
         [{v:"continua",l:"Continua"},{v:"binaria",l:"Binaria"},{v:"proporcion",l:"Proporción o prevalencia"},{v:"correlacion",l:"Correlación entre dos variables continuas"}], a.varType))+
       (a.varType ? '<p class="q-help">'+vtExplain[a.varType]+'</p>' : "")+
+      '<div class="consequence-box" style="margin-top:1.3rem;">'+
+        '<h4>Hipótesis nula y alternativa</h4>'+
+        '<p><b>Hipótesis nula:</b> es el punto de partida del análisis. Generalmente establece que no existe diferencia o asociación. <i>Ejemplo: "No hay diferencia en la presión arterial media entre el grupo tratado y el grupo control."</i></p>'+
+        '<p style="margin-top:.6rem;"><b>Hipótesis alternativa:</b> establece que existe una diferencia o asociación. <i>Ejemplo: "La presión arterial media es diferente entre el grupo tratado y el grupo control."</i></p>'+
+        '<p style="margin-top:.6rem;">El análisis estadístico no demuestra que una hipótesis sea verdadera con certeza. Evalúa si los datos son suficientemente incompatibles con la hipótesis nula.</p>'+
+      '</div>'+
       '</div>';
     var err = ssValidateStep(2);
     return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
   }
 
+  var SS_DESIGN_DESC = {
+    dos_indep:"Cada participante o animal pertenece solo a un grupo — por ejemplo, un grupo recibe tratamiento y otro, distinto, recibe placebo.",
+    pareado:"Las mismas personas o animales se miden dos veces (antes y después), o se comparan en parejas relacionadas.",
+    anova:"Comparas la media de una variable entre tres o más grupos distintos a la vez.",
+    dos_prop:"Comparas el porcentaje de un evento (por ejemplo, respuesta al tratamiento) entre dos grupos independientes.",
+    prevalencia:"No comparas grupos: quieres estimar qué porcentaje de la población tiene una característica, con una precisión determinada.",
+    correlacion:"Quieres saber si dos variables continuas tienden a variar juntas, sin que una dependa necesariamente de la otra."
+  };
   function ssRenderStep3(){
     var a = ssAnswers;
     var opts = ssDesignsForVarType(a.varType);
     if(opts.length===1 && !a.design) a.design = opts[0].v;
     var body = '<div class="q-card">'+ssStepperHtml()+
       '<h2>Selecciona el diseño</h2>'+
+      '<div class="consequence-box">'+
+        '<h4>¿Por qué necesitamos indicar el análisis estadístico?</h4>'+
+        '<p>El tamaño muestral no se calcula de la misma manera para todos los estudios. Cada diseño analiza la información de una forma diferente y, por tanto, necesita un cálculo específico.</p>'+
+        '<ul class="uses-list" style="margin-top:.7rem;">'+
+          ["Comparar la media entre dos grupos independientes → t de Student o Welch.",
+           "Comparar antes y después en las mismas personas → t pareada.",
+           "Comparar tres o más grupos → ANOVA.",
+           "Comparar dos porcentajes → prueba de dos proporciones.",
+           "Estudiar la relación entre dos variables continuas → correlación.",
+           "Estimar una prevalencia → cálculo basado en precisión."].map(function(x){return '<li>'+x+'</li>';}).join("")+
+        '</ul>'+
+        '<p style="margin-top:.7rem;">El '+ssTermLink("modelo_estadistico","modelo estadístico")+' representa matemáticamente cómo se relacionan el resultado, los grupos y otras variables del estudio. La calculadora necesita conocer el análisis principal para determinar qué cantidad de información será necesaria.</p>'+
+      '</div>'+
       (opts.length>1 ? '<div class="options">'+opts.map(function(o){
         return '<button type="button" class="option-btn" data-ss-field="design" data-ss-value="'+o.v+'" aria-pressed="'+(a.design===o.v)+'"><span>'+o.l+'</span>'+(a.design===o.v?'<svg><use href="#i-check"/></svg>':'')+'</button>';
       }).join("")+'</div>' :
       '<div class="alt-box"><div><span class="alt-label">Diseño determinado por el tipo de variable</span><span class="alt-name">'+(opts[0]?opts[0].l:"")+'</span></div></div>')+
+      (opts.length>1 ? '<ul class="uses-list" style="margin-top:1rem;">'+opts.map(function(o){ return '<li><b>'+o.l+':</b> '+(SS_DESIGN_DESC[o.v]||"")+'</li>'; }).join("")+'</ul>' : "")+
+      (a.varType==="continua" ? ssHelpBlock("disenio_indep_pareado") : "")+
       (a.design==="anova" ? '<div class="q-help" style="margin-top:1rem;">En esta primera versión, el ANOVA exige grupos de igual tamaño.</div>' : "")+
       '</div>';
     var err = ssValidateStep(3);
     return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
   }
 
-  var SS_COHEN_D = "Cohen d: 0,20 pequeño; 0,50 moderado; 0,80 grande.";
-  var SS_COHEN_F = "Cohen f: 0,10 pequeño; 0,25 moderado; 0,40 grande.";
   var SS_COHEN_R = "Correlación r: 0,10 pequeña; 0,30 moderada; 0,50 grande.";
-  function ssEffectHelpBlock(cohenLine){
-    var panel = !ssShowEffectHelp ? "" :
-      '<div class="consequence-box" style="margin-top:.8rem;"><p>Puede proceder de estudios publicados similares, metaanálisis, datos históricos, un estudio piloto, o de la diferencia mínima clínicamente o científicamente relevante. Valores orientativos (no elijas automáticamente): '+cohenLine+' Estos puntos de corte dependen del contexto.</p></div>';
-    return '<button type="button" class="text-btn" id="ss-toggle-effect-help" style="margin:.4rem 0 .8rem;"><svg><use href="#i-info"/></svg>¿Cómo obtengo este valor?</button>'+panel;
-  }
-
   function ssRenderStep4(){
     var a = ssAnswers, d = a.design, body = '<div class="q-card">'+ssStepperHtml()+'<h2>Efecto esperado</h2>';
 
     if(d==="dos_indep"){
-      body += ssEffectHelpBlock(SS_COHEN_D);
-      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-d" '+(a.advancedD?"checked":"")+' /> Modo avanzado: introducir Cohen d directamente</label>';
+      body += ssFieldGroup("Media esperada del grupo control", ssNumInput("ss-m1", a.m1, "ej. 120"));
+      body += ssFieldGroup("Media esperada del grupo experimental", ssNumInput("ss-m2", a.m2, "ej. 110"));
+      body += ssHelpBlock("mde");
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin:1rem 0;"><input type="checkbox" id="ss-toggle-advanced-d" '+(a.advancedD?"checked":"")+' /> Modo avanzado: introducir '+ssTermLink("cohen_d","Cohen d")+' directamente</label>';
       if(a.advancedD){
         body += ssFieldGroup("Cohen d", ssNumInput("ss-d-input", a.dInput, "ej. 0.5"));
       } else {
-        body += ssFieldGroup("Media esperada del grupo control", ssNumInput("ss-m1", a.m1, "ej. 120"));
-        body += ssFieldGroup("Media esperada del grupo experimental", ssNumInput("ss-m2", a.m2, "ej. 110"));
         body += ssFieldGroup("Desviación estándar esperada (común)", ssNumInput("ss-sd", a.sd, "ej. 20"));
+        body += ssHelpBlock("sd");
         var m1=ssNum(a.m1), m2=ssNum(a.m2), sd=ssNum(a.sd);
         if(m1!==null && m2!==null && sd!==null && sd>0){
           var dcalc = Math.abs(m1-m2)/sd;
           body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">Diferencia = '+ssFmt(Math.abs(m1-m2))+' · Cohen d = '+ssFmt(dcalc)+'</span></div></div>';
+          body += ssHelpBlock("cohen_d");
         }
       }
     } else if(d==="pareado"){
-      body += ssEffectHelpBlock(SS_COHEN_D);
-      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-dz" '+(a.advancedDz?"checked":"")+' /> Modo avanzado: introducir dz directamente</label>';
+      body += ssFieldGroup("Diferencia media esperada", ssNumInput("ss-diff-mean", a.diffMean, "ej. 5"));
+      body += ssHelpBlock("mde");
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin:1rem 0;"><input type="checkbox" id="ss-toggle-advanced-dz" '+(a.advancedDz?"checked":"")+' /> Modo avanzado: introducir dz directamente</label>';
       if(a.advancedDz){
         body += ssFieldGroup("dz (tamaño del efecto para datos emparejados)", ssNumInput("ss-dz-input", a.dzInput, "ej. 0.5"));
       } else {
-        body += ssFieldGroup("Diferencia media esperada", ssNumInput("ss-diff-mean", a.diffMean, "ej. 5"));
         body += ssFieldGroup("Desviación estándar de las diferencias", ssNumInput("ss-sd-diff", a.sdDiff, "ej. 10"));
         body += '<p class="q-help">No debe utilizarse automáticamente la desviación estándar de las mediciones iniciales o finales: usa la desviación estándar de las diferencias (final − inicial) por sujeto.</p>';
+        body += ssHelpBlock("sd");
         var dm=ssNum(a.diffMean), sdd=ssNum(a.sdDiff);
         if(dm!==null && sdd!==null && sdd>0){
           body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">dz = '+ssFmt(Math.abs(dm)/sdd)+'</span></div></div>';
+          body += ssHelpBlock("cohen_d");
         }
       }
     } else if(d==="anova"){
-      body += ssEffectHelpBlock(SS_COHEN_F);
-      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-f" '+(a.advancedF?"checked":"")+' /> Modo avanzado: introducir Cohen f directamente</label>';
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-f" '+(a.advancedF?"checked":"")+' /> Modo avanzado: introducir '+ssTermLink("cohen_f","Cohen f")+' directamente</label>';
       if(a.advancedF){
         body += ssFieldGroup("Cohen f", ssNumInput("ss-f-input", a.fInput, "ej. 0.25"));
       } else {
@@ -3025,27 +3307,31 @@
         for(var i=0;i<a.k;i++){
           body += ssFieldGroup("Media esperada — grupo "+(i+1), ssNumInput("ss-group-mean-"+i, a.groupMeans[i]||"", "ej. "+(100+i*5)));
         }
+        body += ssHelpBlock("mde");
         body += ssFieldGroup("Desviación estándar común", ssNumInput("ss-sd-anova", a.sdAnova, "ej. 15"));
+        body += ssHelpBlock("sd");
         var means = a.groupMeans.slice(0,a.k).map(ssNum), sda = ssNum(a.sdAnova);
         if(means.every(function(m){return m!==null;}) && sda!==null && sda>0){
           var grand = means.reduce(function(s,x){return s+x;},0)/means.length;
           var ssBetween = means.reduce(function(s,x){return s+(x-grand)*(x-grand);},0)/means.length;
           var fcalc = Math.sqrt(ssBetween)/sda;
           body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">Cohen f = '+ssFmt(fcalc)+'</span></div></div>';
+          body += ssHelpBlock("cohen_f");
         }
       }
     } else if(d==="dos_prop"){
-      body += ssEffectHelpBlock("Ninguna convención de Cohen aplica directamente aquí: compara con la literatura de tu área.");
       body += ssFieldGroup("Proporción esperada en el grupo control (%)", ssNumInput("ss-p1", a.p1, "ej. 30"));
       body += ssFieldGroup("Proporción esperada en el grupo experimental (%)", ssNumInput("ss-p2", a.p2, "ej. 50"));
+      body += ssHelpBlock("mde");
     } else if(d==="prevalencia"){
       body += ssFieldGroup("Prevalencia esperada (%)", ssNumInput("ss-prevalence", a.prevalence, "ej. 20"));
       body += ssFieldGroup("Nivel de confianza (%)", ssNumInput("ss-confidence", a.confidencePct, "ej. 95"));
       body += ssFieldGroup("Margen de error absoluto deseado (puntos porcentuales)", ssNumInput("ss-margin-error", a.marginErrorPct, "ej. 5"));
     } else if(d==="correlacion"){
-      body += ssEffectHelpBlock(SS_COHEN_R);
       body += ssFieldGroup("Correlación mínima que se desea detectar (r, entre -1 y 1, distinto de 0)", ssNumInput("ss-corr-r", a.corrR, "ej. 0.30"));
       body += '<p class="q-help">Para el cálculo se usa el valor absoluto de r; el signo se conserva solo para la interpretación.</p>';
+      body += '<div class="ss-help-toggles"><button type="button" class="text-btn ss-help-toggle" data-ss-help="corr_why"><svg><use href="#i-info"/></svg>¿Cómo obtengo este valor?</button></div>'+
+        (ssHelpOpen.corr_why ? '<div class="consequence-box" style="margin-top:.6rem;"><p>Puede proceder de estudios publicados similares, metaanálisis o un estudio piloto. Valores orientativos (no elección automática): '+SS_COHEN_R+' Dependen del contexto.</p></div>' : "");
     } else {
       body += '<p class="q-help">Selecciona primero un diseño en el paso anterior.</p>';
     }
@@ -3062,13 +3348,14 @@
   function ssRenderStep5(){
     var a = ssAnswers;
     var body = '<div class="q-card">'+ssStepperHtml()+'<h2>Parámetros estadísticos</h2>'+
-      ssFieldGroup("Nivel de significación (α)", ssNumInput("ss-alpha", a.alpha, "0.05"))+
-      '<p class="q-help">Representa el riesgo aceptado de concluir que existe un efecto cuando en realidad no existe.</p>'+
+      ssFieldGroup("Nivel de significación ("+ssTermLink("alfa","α")+")", ssNumInput("ss-alpha", a.alpha, "0.05"))+
+      ssHelpBlock("alfa")+
       ssFieldGroup("Potencia estadística", ssChipRow("powerPct", [{v:"80",l:"80 %"},{v:"90",l:"90 %"},{v:"95",l:"95 %"},{v:"custom",l:"Personalizada"}], a.powerPct))+
       (a.powerPct==="custom" ? ssFieldGroup("Potencia personalizada (%)", ssNumInput("ss-power-custom", a.powerCustomPct, "ej. 85")) : "")+
-      '<p class="q-help">Representa la probabilidad de detectar el efecto especificado si realmente existe.</p>';
+      ssHelpBlock("potencia");
     if(a.design!=="prevalencia"){
       body += ssFieldGroup("Tipo de contraste", ssChipRow("tails",[{v:"bilateral",l:"Bilateral"},{v:"unilateral",l:"Unilateral"}], a.tails));
+      body += ssHelpBlock("contraste");
       if(a.tails==="unilateral"){
         body += '<div class="consequence-box"><p>Utiliza un contraste unilateral únicamente si una diferencia en la dirección contraria no tendría ninguna relevancia y esta decisión se ha establecido antes de analizar los datos.</p></div>';
       }
@@ -3088,7 +3375,8 @@
     var a = ssAnswers;
     var body = '<div class="q-card">'+ssStepperHtml()+
       '<h2>¿Qué porcentaje de participantes o unidades experimentales podría perderse o no ser evaluable?</h2>'+
-      ssFieldGroup("Pérdidas previstas (%)", ssNumInput("ss-dropout", a.dropoutPct, "0"));
+      ssFieldGroup("Pérdidas previstas (%)", ssNumInput("ss-dropout", a.dropoutPct, "0"))+
+      ssHelpBlock("perdidas");
     if(ssMode==="achieved"){
       body += ssFieldGroup(a.studyType==="animales" ? "¿Cuántas unidades experimentales puedes incluir en total?" : "¿Cuántas unidades puedes reclutar o incluir en total?", ssNumInput("ss-available", a.ssAvailable, "ej. 100"));
     }
@@ -3141,7 +3429,8 @@
     renderSSize();
   }
   function ssRestart(){
-    ssStep = 0; ssMode = null; ssShowHelp = false; ssShowEffectHelp = false; ssSensOpen = false; ssRcodeOpen = false;
+    ssStep = 0; ssMode = null; ssShowHelp = false; ssSensOpen = false; ssRcodeOpen = false;
+    ssHelpOpen = {}; ssIntroOpen = false; ssExamplesOpen = false; ssExampleCardOpen = {}; ssResultTab = "simple";
     ssAnswers = {
       studyType: null, dropoutPct: "0", expUnit: null, expUnitOther: "", animalsPerUnit: "",
       studyTitle: "", objective: "", varName: "", varUnit: "", varType: null,
@@ -3173,8 +3462,6 @@
     if(beginBtn) beginBtn.addEventListener("click", function(){ ssStep = 1; renderSSize(); ssShell.scrollIntoView({behavior:"smooth", block:"start"}); });
     var toggleHelp = document.getElementById("ss-toggle-help");
     if(toggleHelp) toggleHelp.addEventListener("click", function(){ ssShowHelp = !ssShowHelp; renderSSize(); });
-    var toggleEffectHelp = document.getElementById("ss-toggle-effect-help");
-    if(toggleEffectHelp) toggleEffectHelp.addEventListener("click", function(){ ssShowEffectHelp = !ssShowEffectHelp; renderSSize(); });
     ssWireStep7();
   }
 
@@ -3190,6 +3477,29 @@
       renderSSize();
       return;
     }
+    var helpToggle = e.target.closest("[data-ss-help]");
+    if(helpToggle){
+      var hk = helpToggle.getAttribute("data-ss-help");
+      ssHelpOpen[hk] = !ssHelpOpen[hk];
+      renderSSize();
+      return;
+    }
+    if(e.target.closest("#ss-toggle-intro")){ ssIntroOpen = !ssIntroOpen; renderSSize(); return; }
+    if(e.target.closest("#ss-toggle-examples")){ ssExamplesOpen = !ssExamplesOpen; renderSSize(); return; }
+    if(e.target.closest("#ss-open-glossary")){ openSSGlossary(); return; }
+    var termBtn = e.target.closest("[data-ss-term]");
+    if(termBtn){ openSSGlossary(termBtn.getAttribute("data-ss-term")); return; }
+    var exToggle = e.target.closest("[data-ss-example-toggle]");
+    if(exToggle){
+      var exId = exToggle.getAttribute("data-ss-example-toggle");
+      ssExampleCardOpen[exId] = !ssExampleCardOpen[exId];
+      renderSSize();
+      return;
+    }
+    var exLoad = e.target.closest("[data-ss-load-example]");
+    if(exLoad){ ssLoadExample(exLoad.getAttribute("data-ss-load-example")); return; }
+    var resTab = e.target.closest("[data-ss-result-tab]");
+    if(resTab){ ssResultTab = resTab.getAttribute("data-ss-result-tab"); renderSSize(); return; }
   });
   ssShell.addEventListener("change", function(e){
     var t = e.target;
@@ -3215,6 +3525,38 @@
     var gm = id.match(/^ss-group-mean-(\d+)$/);
     if(gm){ ssAnswers.groupMeans[parseInt(gm[1],10)] = t.value; return; }
   });
+
+  /* ---- glosario (modal) ---- */
+  var ssglossModal = document.getElementById("ssgloss-modal");
+  var ssglossList = document.getElementById("ssgloss-list");
+  var ssglossClose = document.getElementById("ssgloss-close");
+  var ssglossRendered = false;
+  function renderSSGlossary(){
+    if(ssglossRendered) return;
+    ssglossList.innerHTML = SS_GLOSSARY_ORDER.map(function(key){
+      var g = SS_GLOSSARY[key];
+      return '<dt id="ssgloss-term-'+key+'">'+escapeHtml(g.term)+'</dt><dd>'+escapeHtml(g.def)+'</dd>';
+    }).join("");
+    ssglossRendered = true;
+  }
+  function openSSGlossary(termKey){
+    renderSSGlossary();
+    ssglossModal.hidden = false;
+    Array.prototype.forEach.call(ssglossList.querySelectorAll(".ss-gloss-active"), function(el){ el.classList.remove("ss-gloss-active"); });
+    if(termKey){
+      var el = document.getElementById("ssgloss-term-"+termKey);
+      if(el){
+        el.classList.add("ss-gloss-active");
+        setTimeout(function(){ el.scrollIntoView({block:"start"}); }, 0);
+      }
+    } else {
+      ssglossList.scrollTop = 0;
+    }
+  }
+  function closeSSGlossary(){ ssglossModal.hidden = true; }
+  ssglossClose.addEventListener("click", closeSSGlossary);
+  ssglossModal.addEventListener("click", function(e){ if(e.target === ssglossModal) closeSSGlossary(); });
+  document.addEventListener("keydown", function(e){ if(e.key === "Escape" && !ssglossModal.hidden) closeSSGlossary(); });
 
   /* ============================================================
      18. CÁLCULO DE TAMAÑO MUESTRAL — RESULTADO, SENSIBILIDAD, CÓDIGO R
@@ -3578,6 +3920,83 @@
       '</svg>';
   }
 
+  function ssEffectMagnitudeLabel(design, val){
+    if(val===null||val===undefined) return "";
+    if(design==="dos_indep"||design==="pareado"){
+      if(val<0.35) return "pequeño";
+      if(val<0.65) return "moderado";
+      return "grande";
+    }
+    if(design==="anova"){
+      if(val<0.175) return "pequeño";
+      if(val<0.325) return "moderado";
+      return "grande";
+    }
+    if(design==="correlacion"){
+      if(val<0.2) return "pequeña";
+      if(val<0.4) return "moderada";
+      return "grande";
+    }
+    return "";
+  }
+
+  function ssBuildWhyThisSample(res){
+    if(res.error) return "";
+    var a = ssAnswers, d = res.design;
+    var pieces = [];
+    var mag = ssEffectMagnitudeLabel(d, res.effectVal);
+    var comparacion = { dos_indep:"comparar dos grupos independientes", pareado:"comparar las mismas unidades antes y después",
+      anova:"comparar "+res.k+" grupos independientes", dos_prop:"comparar dos proporciones independientes",
+      prevalencia:"estimar una prevalencia con una precisión determinada", correlacion:"detectar una correlación" }[d] || "";
+    pieces.push("El resultado obtenido se debe a que quieres "+comparacion+(mag?(", con un efecto "+mag):"")+".");
+    if(d!=="prevalencia"){
+      pieces.push("Has seleccionado una potencia del "+ssFmt(res.targetPowerPct,0)+" % y un contraste "+(a.tails==="unilateral"?"unilateral":"bilateral")+".");
+      if(res.targetPowerPct>=90) pieces.push("Una potencia elevada proporciona mayor capacidad de detección, pero incrementa la muestra necesaria.");
+      else pieces.push("Esta potencia es la opción habitual: ofrece un equilibrio razonable entre capacidad de detección y tamaño muestral.");
+    }
+    if(mag==="pequeño"||mag==="pequeña"){
+      pieces.push("Los efectos pequeños son más difíciles de distinguir del azar, por lo que requieren muestras considerablemente mayores.");
+    }
+    if(ssAllocationApplies() && a.allocation!=="1:1"){
+      pieces.push("Además, has elegido una asignación "+a.allocation+" en vez de 1:1, lo que generalmente exige una muestra total algo mayor para mantener la misma potencia.");
+    }
+    if(res.dropoutPct>0){
+      pieces.push("Por último, un "+ssFmt(res.dropoutPct,0)+" % de pérdidas previstas incrementa el número de unidades que hay que reclutar por encima del número analizable.");
+    }
+    return pieces.join(" ");
+  }
+
+  function ssBuildGuidedText(res){
+    if(res.error) return [];
+    var a = ssAnswers, d = res.design, sujeto = ssUnitLabel(true);
+    var sections = [];
+    var comparacionTxt = {
+      dos_indep:"Vas a comparar la media de "+escapeHtml(a.varName||"tu variable principal")+" entre dos grupos independientes (cada "+ssUnitLabel(false)+" pertenece a un único grupo).",
+      pareado:"Vas a comparar las mismas unidades en dos momentos o condiciones — un diseño emparejado.",
+      anova:"Vas a comparar la media de "+escapeHtml(a.varName||"tu variable principal")+" entre "+res.k+" grupos independientes a la vez.",
+      dos_prop:"Vas a comparar el porcentaje de un evento entre dos grupos independientes.",
+      prevalencia:"No vas a comparar grupos: vas a estimar qué porcentaje de la población tiene una característica, con una precisión determinada.",
+      correlacion:"Vas a estudiar si dos variables continuas tienden a variar juntas."
+    }[d];
+    sections.push({h:"Qué se va a comparar", t:comparacionTxt});
+    if(res.effectLabel){
+      sections.push({h:"Qué efecto se desea detectar", t:"Has definido "+res.effectLabel+" como la magnitud mínima que te interesa detectar — no la que esperas obtener en el mejor de los casos, sino la menor que seguiría siendo relevante."});
+    }
+    if(d!=="prevalencia"){
+      sections.push({h:"Qué significa alfa", t:"Con "+ssTermLink("alfa","α")+" = "+ssFmt(res.alpha,3)+", aceptas un riesgo máximo de "+ssFmt(res.alpha*100,1)+" % de concluir que existe un efecto cuando en realidad no existe."});
+      sections.push({h:"Qué significa la potencia", t:(ssMode==="priori" ? ("Con una potencia del "+ssFmt(res.targetPowerPct,0)+" %, si el efecto especificado existe realmente, el estudio lo detectaría en aproximadamente "+ssFmt(res.targetPowerPct,0)+" de cada 100 estudios equivalentes.") : ("Con el tamaño disponible, la potencia real es del "+ssFmt(res.powerAchievedPct,1)+" %: la probabilidad aproximada de detectar el efecto especificado, si realmente existe."))});
+    }
+    if(ssMode==="priori"){
+      sections.push({h:"Por qué se ajusta por pérdidas", t:"El cálculo da la muestra que debe completar el estudio (la "+ssTermLink("muestra_analizable","muestra analizable")+"). Como algunas unidades pueden perderse por el camino, hay que reclutar más de las estrictamente necesarias: "+ssFmt(res.dropoutPct,0)+" % de pérdidas previstas."});
+    }
+    var repreTxt = res.groups.length>1 || (res.k&&res.k>1)
+      ? "La N indicada es el número de "+sujeto+" que hacen falta en cada grupo, no el total combinado (aunque el total también se muestra)."
+      : "La N indicada es el número total de "+sujeto+" necesarias para este diseño.";
+    sections.push({h:"Qué representa la muestra por grupo", t:repreTxt});
+    sections.push({h:"Limitaciones de este cálculo", t:"El resultado asume que los valores introducidos (efecto, variabilidad, pérdidas) se cumplen razonablemente en la práctica. Diseños más complejos — modelos mixtos, supervivencia, conglomerados, equivalencia o no inferioridad — no están cubiertos por esta calculadora y pueden requerir métodos específicos o asesoramiento estadístico."});
+    return sections;
+  }
+
   /* ---- render paso 7 ---- */
   var ssLastResult = null;
   function ssRenderStep7(){
@@ -3605,25 +4024,47 @@
       '<p style="font-size:.92rem; line-height:1.6;">'+escapeHtml(resultText)+'</p>'+
       '</div>';
 
-    // tabla resumen
+    // tabla resumen (pestaña "Detalles técnicos")
+    var betaPct = res.design!=="prevalencia" ? (ssMode==="priori" ? 100-res.targetPowerPct : 100-res.powerAchievedPct) : null;
     var rows = [
       ["Tipo de estudio", {humanos:"Con humanos",animales:"Experimento con animales",otro:"Otro"}[a.studyType]],
       ["Variable principal", a.varName + (a.varUnit?(" ("+a.varUnit+")"):"")],
       ["Diseño", res.testName],
-      ["Prueba estadística", res.testName],
+      [ssTermLink("modelo_estadistico","Prueba o modelo estadístico"), res.testName],
       ["Tamaño del efecto", res.effectLabel || "—"],
-      ["Nivel de significación (α)", ssFmt(res.alpha,3)],
+      ["Nivel de significación ("+ssTermLink("alfa","alfa")+")", ssFmt(res.alpha,3)],
       ["Potencia estadística", res.design!=="prevalencia" ? (ssMode==="priori"?ssFmt(res.targetPowerPct,0)+" %":ssFmt(res.powerAchievedPct,1)+" % (alcanzada)") : "No aplica (diseño de precisión)"],
+      [ssTermLink("beta","Beta")+" (riesgo de no detectar el efecto)", betaPct!==null ? ssFmt(betaPct,1)+" %" : "No aplica (diseño de precisión)"],
       ["Contraste", res.design!=="prevalencia" ? (a.tails==="unilateral"?"Unilateral":"Bilateral") : "No aplica"],
       ["Asignación entre grupos", ssAllocationApplies() ? a.allocation : "No aplica"],
       ["Pérdidas previstas", ssFmt(res.dropoutPct,0)+" %"],
-      ["Tamaño analizable", res.groups.map(function(g){return g.label+": "+ssFmt(g.nAnalyzable,0);}).join(" · ")],
-      ["Tamaño final", ssMode==="priori" ? res.groups.map(function(g){return g.label+": "+ssFmt(g.nRecruit,0);}).join(" · ") : "Disponible: "+ssFmt(res.totalAvailable,0)]
+      [ssTermLink("muestra_analizable","Tamaño analizable")+" (N analizable)", res.groups.map(function(g){return g.label+": "+ssFmt(g.nAnalyzable,0);}).join(" · ")],
+      [ssTermLink("muestra_reclutar","Tamaño final")+" (N ajustada)", ssMode==="priori" ? res.groups.map(function(g){return g.label+": "+ssFmt(g.nRecruit,0);}).join(" · ") : "Disponible: "+ssFmt(res.totalAvailable,0)]
     ];
     if(res.totalAnimals) rows.push(["Total de animales", ssFmt(res.totalAnimals,0)]);
-    body += '<div class="ss-table-wrap"><table class="ss-table"><tbody>'+
+    var technicalTableHtml = '<div class="ss-table-wrap"><table class="ss-table"><tbody>'+
       rows.map(function(r){ return '<tr><th>'+r[0]+'</th><td>'+escapeHtml(String(r[1]))+'</td></tr>'; }).join("")+
       '</tbody></table></div>';
+
+    var guided = ssBuildGuidedText(res);
+    var guidedHtml = guided.map(function(s){ return '<h4 style="margin-top:1.2rem;">'+s.h+'</h4><p style="font-size:.92rem; line-height:1.6;">'+s.t+'</p>'; }).join("");
+    var whyThis = ssBuildWhyThisSample(res);
+    var whyThisHtml = whyThis ? '<div class="consequence-box" style="margin-top:1.3rem;"><h4>¿Por qué ha salido esta muestra?</h4><p>'+escapeHtml(whyThis)+'</p></div>' : "";
+
+    var simpleTabHtml = '<p style="font-size:.92rem; line-height:1.6;">'+escapeHtml(resultText)+'</p>';
+    var guidedTabHtml = guidedHtml + whyThisHtml;
+    var technicalTabHtml = technicalTableHtml;
+
+    body += '<div class="ssres-tabs" style="margin-top:1.4rem;">'+
+      '<div class="ssres-tabnav">'+
+        '<button type="button" class="ssres-tab-btn" data-ss-result-tab="simple" aria-selected="'+(ssResultTab==="simple")+'">Resultado sencillo</button>'+
+        '<button type="button" class="ssres-tab-btn" data-ss-result-tab="guided" aria-selected="'+(ssResultTab==="guided")+'">Explicación guiada</button>'+
+        '<button type="button" class="ssres-tab-btn" data-ss-result-tab="technical" aria-selected="'+(ssResultTab==="technical")+'">Detalles técnicos</button>'+
+      '</div>'+
+      '<div class="ssres-tabpanel">'+
+        (ssResultTab==="simple" ? simpleTabHtml : ssResultTab==="guided" ? guidedTabHtml : technicalTabHtml)+
+      '</div>'+
+    '</div>';
 
     body += '<h4 style="margin-top:1.4rem;">Interpretación</h4><p style="font-size:.92rem; line-height:1.6;">'+escapeHtml(interpretation)+'</p>';
 
