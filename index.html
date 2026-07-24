@@ -286,6 +286,16 @@
   .consequence-box h4{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:.5rem; }
   .consequence-box p{ font-size:.89rem; line-height:1.6; }
 
+  /* ============ CÁLCULO DE TAMAÑO MUESTRAL ============ */
+  .ss-error{ color:var(--invalid); font-size:.85rem; margin-top:.7rem; font-weight:600; }
+  .ss-limits{ font-size:.78rem; color:var(--text-muted); line-height:1.55; margin-top:1.6rem; padding-top:1.2rem; border-top:1px solid var(--border); }
+  .ss-table-wrap{ overflow-x:auto; margin-top:.8rem; }
+  .ss-table{ width:100%; border-collapse:collapse; font-size:.86rem; }
+  .ss-table th, .ss-table td{ text-align:left; padding:.55rem .7rem; border-bottom:1px solid var(--border); font-variant-numeric:tabular-nums; }
+  .ss-table th{ color:var(--text-muted); font-weight:600; white-space:nowrap; }
+  .ss-table thead th{ font-size:.72rem; text-transform:uppercase; letter-spacing:.05em; }
+  .ss-sens-chart{ width:100%; height:auto; margin-top:1rem; }
+
   /* ============ BUZÓN DE SUGERENCIAS ============ */
   .fab-suggest{ position:fixed; right:1.25rem; bottom:1.25rem; z-index:40; background:var(--accent); color:#fff; border:none; border-radius:999px; padding:.8rem 1.15rem; display:flex; align-items:center; gap:.5rem; font-weight:700; font-size:.85rem; cursor:pointer; box-shadow:var(--shadow-md); }
   .fab-suggest:hover{ opacity:.92; }
@@ -356,6 +366,7 @@
         <button id="tab-btn-dict" data-tab="dict" role="tab" aria-selected="false">Diccionario</button>
         <button id="tab-btn-charts" data-tab="charts" role="tab" aria-selected="false">Gráficos</button>
         <button id="tab-btn-audit" data-tab="audit" role="tab" aria-selected="false">Auditor</button>
+        <button id="tab-btn-ssize" data-tab="ssize" role="tab" aria-selected="false">Tamaño muestral</button>
       </div>
       <button class="icon-btn" id="theme-toggle" type="button" aria-label="Cambiar tema claro/oscuro"><svg id="theme-icon"><use href="#i-moon"/></svg></button>
     </div>
@@ -399,6 +410,10 @@
 
   <section id="panel-audit" class="tabpanel" role="tabpanel" hidden>
     <div class="wizard-shell" style="max-width:640px;" id="audit-shell"></div>
+  </section>
+
+  <section id="panel-ssize" class="tabpanel" role="tabpanel" hidden>
+    <div class="wizard-shell" id="ssize-shell"></div>
   </section>
 </main>
 
@@ -1707,7 +1722,7 @@
   /* ============================================================
      8. PESTAÑAS PRINCIPALES
   ============================================================ */
-  var PANELS = ["wizard","dict","charts","audit"];
+  var PANELS = ["wizard","dict","charts","audit","ssize"];
   function switchTab(name){
     PANELS.forEach(function(p){
       document.getElementById("panel-"+p).hidden = (p !== name);
@@ -2440,6 +2455,1255 @@
     if(gotoPhKey){ goToPostHoc(gotoPhKey.getAttribute("data-goto-posthoc-key")); return; }
   });
 
+
+  /* ============================================================
+     16. CÁLCULO DE TAMAÑO MUESTRAL — MOTOR NUMÉRICO
+     Implementación propia (sin dependencias) de las distribuciones
+     necesarias para que los resultados coincidan con G*Power / R
+     (paquete pwr): t no central, F no central, chi-cuadrado no
+     central, todas construidas sobre gamma/beta incompletas
+     (algoritmos estándar tipo Numerical Recipes / Lenth).
+  ============================================================ */
+  function ssErf(x){
+    var z = Math.abs(x);
+    var t = 1/(1+0.5*z);
+    var ans = t*Math.exp(-z*z-1.26551223+t*(1.00002368+t*(0.37409196+t*(0.09678418+
+      t*(-0.18628806+t*(0.27886807+t*(-1.13520398+t*(1.48851587+
+      t*(-0.82215223+t*0.17087277)))))))));
+    var erfc = z >= 0 ? ans : 2-ans;
+    return x >= 0 ? 1-erfc : erfc-1;
+  }
+  function ssPnorm(x){ return 0.5*(1+ssErf(x/Math.SQRT2)); }
+  function ssQnorm(p){
+    if(p <= 0) return -Infinity;
+    if(p >= 1) return Infinity;
+    var a=[-3.969683028665376e+01,2.209460984245205e+02,-2.759285104469687e+02,1.383577518672690e+02,-3.066479806614716e+01,2.506628277459239e+00];
+    var b=[-5.447609879822406e+01,1.615858368580409e+02,-1.556989798598866e+02,6.680131188771972e+01,-1.328068155288572e+01];
+    var c=[-7.784894002430293e-03,-3.223964580411365e-01,-2.400758277161838e+00,-2.549732539343734e+00,4.374664141464968e+00,2.938163982698783e+00];
+    var d=[7.784695709041462e-03,3.224671290700398e-01,2.445134137142996e+00,3.754408661907416e+00];
+    var plow = 0.02425, phigh = 1-plow, x, q, r;
+    if(p < plow){
+      q = Math.sqrt(-2*Math.log(p));
+      x = (((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    } else if(p <= phigh){
+      q = p-0.5; r = q*q;
+      x = (((((a[0]*r+a[1])*r+a[2])*r+a[3])*r+a[4])*r+a[5])*q / (((((b[0]*r+b[1])*r+b[2])*r+b[3])*r+b[4])*r+1);
+    } else {
+      q = Math.sqrt(-2*Math.log(1-p));
+      x = -(((((c[0]*q+c[1])*q+c[2])*q+c[3])*q+c[4])*q+c[5]) / ((((d[0]*q+d[1])*q+d[2])*q+d[3])*q+1);
+    }
+    var e = 0.5*(1-ssErf(-x/Math.SQRT2)) - p;
+    var u = e*Math.sqrt(2*Math.PI)*Math.exp(x*x/2);
+    return x - u/(1+x*u/2);
+  }
+  var SS_LANCZOS_G = 7;
+  var SS_LANCZOS_C = [0.99999999999980993,676.5203681218851,-1259.1392167224028,
+    771.32342877765313,-176.61502916214059,12.507343278686905,
+    -0.13857109526572012,9.9843695780195716e-6,1.5056327351493116e-7];
+  function ssLogGamma(x){
+    if(x < 0.5) return Math.log(Math.PI/Math.sin(Math.PI*x)) - ssLogGamma(1-x);
+    x -= 1;
+    var a = SS_LANCZOS_C[0];
+    var t = x + SS_LANCZOS_G + 0.5;
+    for(var i=1;i<SS_LANCZOS_G+2;i++){ a += SS_LANCZOS_C[i]/(x+i); }
+    return 0.5*Math.log(2*Math.PI) + (x+0.5)*Math.log(t) - t + Math.log(a);
+  }
+  function ssBetacf(a,b,x){
+    var MAXIT=200, EPS=3e-16, FPMIN=1e-300;
+    var qab=a+b, qap=a+1, qam=a-1;
+    var c=1, d=1-qab*x/qap;
+    if(Math.abs(d)<FPMIN) d=FPMIN;
+    d=1/d;
+    var h=d;
+    for(var m=1;m<=MAXIT;m++){
+      var m2=2*m;
+      var aa=m*(b-m)*x/((qam+m2)*(a+m2));
+      d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+      c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+      d=1/d; h*=d*c;
+      aa=-(a+m)*(qab+m)*x/((a+m2)*(qap+m2));
+      d=1+aa*d; if(Math.abs(d)<FPMIN) d=FPMIN;
+      c=1+aa/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+      d=1/d;
+      var del=d*c; h*=del;
+      if(Math.abs(del-1)<EPS) break;
+    }
+    return h;
+  }
+  function ssBetai(a,b,x){
+    if(x<=0) return 0;
+    if(x>=1) return 1;
+    var bt = Math.exp(ssLogGamma(a+b)-ssLogGamma(a)-ssLogGamma(b)+a*Math.log(x)+b*Math.log(1-x));
+    if(x < (a+1)/(a+b+2)) return bt*ssBetacf(a,b,x)/a;
+    return 1-bt*ssBetacf(b,a,1-x)/b;
+  }
+  function ssPt(t, df){
+    var x = df/(df+t*t);
+    var ib = ssBetai(df/2, 0.5, x);
+    return t>0 ? 1-0.5*ib : 0.5*ib;
+  }
+  function ssPf(f, df1, df2){
+    if(f<=0) return 0;
+    var x = df1*f/(df1*f+df2);
+    return ssBetai(df1/2, df2/2, x);
+  }
+  function ssQt(p, df){
+    var lo=-1e4, hi=1e4;
+    for(var i=0;i<100;i++){ var mid=(lo+hi)/2; if(ssPt(mid,df) < p) lo=mid; else hi=mid; }
+    return (lo+hi)/2;
+  }
+  function ssQf(p, df1, df2){
+    var lo=1e-9, hi=1e6;
+    for(var i=0;i<100;i++){ var mid=(lo+hi)/2; if(ssPf(mid,df1,df2) < p) lo=mid; else hi=mid; }
+    return (lo+hi)/2;
+  }
+  function ssGammainc(a, x){
+    if(x<=0) return 0;
+    if(x < a+1){
+      var sum = 1/a, term = 1/a, ap = a;
+      for(var i=0;i<500;i++){
+        ap += 1; term *= x/ap; sum += term;
+        if(Math.abs(term) < Math.abs(sum)*1e-16) break;
+      }
+      return sum*Math.exp(-x+a*Math.log(x)-ssLogGamma(a));
+    } else {
+      var MAXIT=500, EPS=3e-16, FPMIN=1e-300;
+      var b=x+1-a, c=1/FPMIN, d=1/b, h=d;
+      for(var i=1;i<=MAXIT;i++){
+        var an=-i*(i-a);
+        b+=2;
+        d=an*d+b; if(Math.abs(d)<FPMIN) d=FPMIN;
+        c=b+an/c; if(Math.abs(c)<FPMIN) c=FPMIN;
+        d=1/d;
+        var del=d*c; h*=del;
+        if(Math.abs(del-1)<EPS) break;
+      }
+      return 1-Math.exp(-x+a*Math.log(x)-ssLogGamma(a))*h;
+    }
+  }
+  function ssLogChiDensity(x, df){
+    if(x<=0) return -Infinity;
+    return (df/2-1)*Math.log(x) - x/2 - (df/2)*Math.log(2) - ssLogGamma(df/2);
+  }
+  function ssPnchisq(x, k, lambda){
+    if(lambda <= 1e-12) return ssGammainc(k/2, x/2);
+    if(x<=0) return 0;
+    var halfLambda = lambda/2;
+    var w = Math.exp(-halfLambda);
+    var sum = w * ssGammainc(k/2, x/2);
+    var maxJ = Math.ceil(halfLambda + 40*Math.sqrt(halfLambda+1) + 200);
+    for(var j=1; j<=maxJ; j++){
+      w *= halfLambda/j;
+      sum += w * ssGammainc(k/2+j, x/2);
+      if(w < 1e-16 && j > halfLambda) break;
+    }
+    return Math.min(1, sum);
+  }
+  function ssPnct(t, df, ncp){
+    if(Math.abs(ncp) < 1e-12) return ssPt(t, df);
+    var vmax = df + 10*Math.sqrt(2*df) + 60;
+    var umax = Math.sqrt(vmax);
+    var N = 3000;
+    var h = umax/N, sum = 0;
+    for(var i=0;i<=N;i++){
+      var u = i*h;
+      var g = 0;
+      if(u>0){
+        var v = u*u;
+        var arg = t*Math.sqrt(v/df) - ncp;
+        g = ssPnorm(arg) * Math.exp(ssLogChiDensity(v, df)) * 2*u;
+      }
+      var w = (i===0||i===N) ? 1 : (i%2===0 ? 2 : 4);
+      sum += w*g;
+    }
+    return Math.max(0, Math.min(1, sum*h/3));
+  }
+  function ssPncf(f, df1, df2, ncp){
+    if(Math.abs(ncp) < 1e-12) return ssPf(f, df1, df2);
+    if(f<=0) return 0;
+    var wmax = df2 + 10*Math.sqrt(2*df2) + 60;
+    var umax = Math.sqrt(wmax);
+    var N = 1200;
+    var h = umax/N, sum = 0;
+    for(var i=0;i<=N;i++){
+      var u = i*h;
+      var g = 0;
+      if(u>0){
+        var w2 = u*u;
+        var xArg = f*(df1/df2)*w2;
+        g = ssPnchisq(xArg, df1, ncp) * Math.exp(ssLogChiDensity(w2, df2)) * 2*u;
+      }
+      var wt = (i===0||i===N) ? 1 : (i%2===0 ? 2 : 4);
+      sum += wt*g;
+    }
+    return Math.max(0, Math.min(1, sum*h/3));
+  }
+
+  /* ---- funciones de potencia por diseño (n = tamaño por grupo/muestra) ---- */
+  function ssPowerT2(n1, n2, d, alpha, tails){
+    var df = n1+n2-2;
+    var ncp = Math.abs(d) / Math.sqrt(1/n1 + 1/n2);
+    var tcrit = ssQt(1 - alpha/tails, df);
+    if(tails === 2) return (1-ssPnct(tcrit,df,ncp)) + ssPnct(-tcrit,df,ncp);
+    return 1 - ssPnct(tcrit, df, ncp);
+  }
+  function ssPowerPaired(n, dz, alpha, tails){
+    var df = n-1;
+    var ncp = Math.abs(dz) * Math.sqrt(n);
+    var tcrit = ssQt(1 - alpha/tails, df);
+    if(tails === 2) return (1-ssPnct(tcrit,df,ncp)) + ssPnct(-tcrit,df,ncp);
+    return 1 - ssPnct(tcrit, df, ncp);
+  }
+  function ssPowerAnova(n, k, f, alpha){
+    var df1 = k-1, df2 = k*(n-1);
+    var ncp = f*f*k*n;
+    var fcrit = ssQf(1-alpha, df1, df2);
+    return 1 - ssPncf(fcrit, df1, df2, ncp);
+  }
+  function ssPowerProp2(n1, n2, p1, p2, alpha, tails){
+    var pbar = (n1*p1+n2*p2)/(n1+n2), qbar = 1-pbar;
+    var se0 = Math.sqrt(pbar*qbar*(1/n1+1/n2));
+    var se1 = Math.sqrt(p1*(1-p1)/n1 + p2*(1-p2)/n2);
+    var zcrit = ssQnorm(1-alpha/tails);
+    var diff = Math.abs(p1-p2);
+    if(se1 <= 0) return diff > 0 ? 1 : 0;
+    if(tails === 2) return ssPnorm((diff-zcrit*se0)/se1) + ssPnorm((-diff-zcrit*se0)/se1);
+    return ssPnorm((diff-zcrit*se0)/se1);
+  }
+  function ssPowerCorr(n, r, alpha, tails){
+    var zr = Math.atanh(Math.min(0.999999, Math.abs(r)));
+    var zcrit = ssQnorm(1-alpha/tails);
+    var se = 1/Math.sqrt(n-3);
+    if(tails === 2) return ssPnorm(zr/se-zcrit) + ssPnorm(-zr/se-zcrit);
+    return ssPnorm(zr/se-zcrit);
+  }
+  function ssNPrevalence(p, confidence, marginError){
+    var z = ssQnorm(1-(1-confidence)/2);
+    return Math.ceil(z*z*p*(1-p)/(marginError*marginError));
+  }
+
+  /* ---- búsqueda del entero mínimo con potencia >= target (potencia monótona creciente en n) ---- */
+  var SS_MAX_N = 200000;
+  function ssSolveN(powerFn, target){
+    var n = 2;
+    while(powerFn(n) < target){ n++; if(n>SS_MAX_N) return null; }
+    return n;
+  }
+  // bisección inversa sobre el tamaño del efecto (monótona creciente en |efecto|)
+  function ssSolveEffect(powerAtEffectFn, target, lo, hi){
+    var i;
+    for(i=0;i<80;i++){
+      var mid = (lo+hi)/2;
+      if(powerAtEffectFn(mid) < target) lo = mid; else hi = mid;
+    }
+    return (lo+hi)/2;
+  }
+
+  /* ============================================================
+     17. CÁLCULO DE TAMAÑO MUESTRAL — ASISTENTE DE 7 PASOS
+  ============================================================ */
+  var ssStep = 0;           // 0 = entrada/selección de modo, 1..7 = pasos
+  var ssMode = null;        // "priori" | "achieved"
+  var ssShowHelp = false;   // "¿Qué necesito antes de empezar?"
+  var ssShowEffectHelp = false; // "¿Cómo obtengo este valor?"
+  var ssSensOpen = false;
+  var ssRcodeOpen = false;
+  var ssAnswers = {
+    studyType: null, dropoutPct: "0", expUnit: null, expUnitOther: "", animalsPerUnit: "",
+    studyTitle: "", objective: "", varName: "", varUnit: "", varType: null,
+    design: null,
+    m1: "", m2: "", sd: "", advancedD: false, dInput: "",
+    diffMean: "", sdDiff: "", advancedDz: false, dzInput: "",
+    k: 3, groupMeans: ["","",""], sdAnova: "", advancedF: false, fInput: "",
+    p1: "", p2: "",
+    prevalence: "", confidencePct: "95", marginErrorPct: "",
+    corrR: "",
+    effectSource: "",
+    alpha: "0.05", powerPct: "80", powerCustomPct: "",
+    tails: "bilateral",
+    allocation: "1:1", allocationCustom: "",
+    ssAvailable: ""
+  };
+  var ssShell = document.getElementById("ssize-shell");
+
+  var SS_STEP_LABELS = ["Tipo de estudio","Objetivo y variable","Diseño","Efecto esperado","Parámetros estadísticos","Pérdidas previstas","Resultado"];
+
+  function ssNum(v){ var n = parseFloat(String(v).replace(",",".")); return isNaN(n) ? null : n; }
+  function ssPctToProp(v){ var n = ssNum(v); return n===null ? null : n/100; }
+
+  function ssDesignsForVarType(vt){
+    if(vt==="continua") return [
+      {v:"dos_indep", l:"Comparar dos grupos independientes"},
+      {v:"pareado", l:"Comparar dos mediciones emparejadas o antes-después"},
+      {v:"anova", l:"Comparar tres o más grupos independientes (ANOVA)"}
+    ];
+    if(vt==="binaria") return [{v:"dos_prop", l:"Comparar dos proporciones independientes"}];
+    if(vt==="proporcion") return [{v:"prevalencia", l:"Estimar una única proporción o prevalencia con una precisión determinada"}];
+    if(vt==="correlacion") return [{v:"correlacion", l:"Detectar una correlación entre dos variables continuas"}];
+    return [];
+  }
+
+  function ssFieldGroup(label, inner, opt){
+    return '<div class="field-group"><label class="field-label">'+label+(opt?' <span class="opt">— '+opt+'</span>':'')+'</label>'+inner+'</div>';
+  }
+  function ssNumInput(id, value, placeholder, extra){
+    return '<input type="text" inputmode="decimal" id="'+id+'" class="num-input" style="width:100%;" value="'+escapeHtml(value)+'" placeholder="'+escapeHtml(placeholder||"")+'" '+(extra||"")+' />';
+  }
+  function ssChipRow(field, options, current){
+    return '<div class="chip-field">'+options.map(function(o){
+      return '<button type="button" data-ss-field="'+field+'" data-ss-value="'+escapeHtml(o.v)+'" aria-pressed="'+(current===o.v)+'">'+escapeHtml(o.l)+'</button>';
+    }).join("")+'</div>';
+  }
+
+  function ssStepperHtml(){
+    if(ssStep < 1 || ssStep > 7) return "";
+    return '<span class="kicker">Paso '+ssStep+' de 7 — '+SS_STEP_LABELS[ssStep-1]+'</span>';
+  }
+  function ssFooterHtml(canBack, canNext, nextLabel){
+    return '<div class="wizard-footer">'+
+      '<button class="text-btn" id="ss-back" type="button" '+(canBack?"":"disabled")+'><svg><use href="#i-back"/></svg>Anterior</button>'+
+      '<div style="display:flex; gap:.6rem;">'+
+        '<button class="text-btn" id="ss-restart" type="button"><svg><use href="#i-restart"/></svg>Reiniciar cálculo</button>'+
+        (canNext!==false ? '<button class="btn btn-primary" id="ss-next" type="button">'+(nextLabel||"Continuar")+'<svg><use href="#i-arrow"/></svg></button>' : '')+
+      '</div></div>';
+  }
+
+  /* ---------- Validación bloqueante por paso ---------- */
+  function ssValidateStep(step){
+    var a = ssAnswers;
+    if(step===1){
+      if(!a.studyType) return "Selecciona el tipo de estudio para continuar.";
+      if(a.studyType==="animales" && !a.expUnit) return "Indica la unidad experimental antes de continuar.";
+      if(a.studyType==="animales" && a.expUnit==="otra" && !a.expUnitOther.trim()) return "Describe la unidad experimental.";
+      return null;
+    }
+    if(step===2){
+      if(!a.varName.trim()) return "Indica el nombre de la variable principal.";
+      if(!a.varType) return "Selecciona el tipo de variable principal.";
+      return null;
+    }
+    if(step===3){
+      if(!a.design) return "Selecciona un diseño para continuar.";
+      return null;
+    }
+    if(step===4){
+      return ssValidateEffect();
+    }
+    if(step===5){
+      var alpha = ssNum(a.alpha);
+      if(alpha===null || alpha<=0 || alpha>=1) return "El nivel de significación (α) debe ser un número entre 0 y 1.";
+      var pw = a.powerPct==="custom" ? ssNum(a.powerCustomPct) : ssNum(a.powerPct);
+      if(pw===null || pw<=0 || pw>=100) return "La potencia estadística debe ser un porcentaje entre 0 y 100.";
+      if(ssAllocationApplies() && a.allocation==="custom"){
+        var r = ssNum(a.allocationCustom);
+        if(r===null || r<=0) return "Indica una relación de asignación válida (ej. 1.5).";
+      }
+      return null;
+    }
+    if(step===6){
+      var d = ssNum(a.dropoutPct);
+      if(d===null || d<0 || d>=95) return "Las pérdidas previstas deben ser un porcentaje entre 0 y 95.";
+      if(ssMode==="achieved"){
+        var av = ssNum(a.ssAvailable);
+        if(av===null || av<=0) return "Indica cuántas unidades puedes reclutar o incluir en total.";
+      }
+      return null;
+    }
+    return null;
+  }
+  function ssValidateEffect(){
+    var a = ssAnswers, d = a.design;
+    if(d==="dos_indep"){
+      if(a.advancedD){
+        var dv = ssNum(a.dInput);
+        if(dv===null || dv===0) return "Introduce un valor de Cohen d distinto de cero.";
+        return null;
+      }
+      var m1=ssNum(a.m1), m2=ssNum(a.m2), sd=ssNum(a.sd);
+      if(m1===null||m2===null||sd===null) return "Completa las dos medias esperadas y la desviación estándar.";
+      if(sd<=0) return "La desviación estándar debe ser mayor que cero.";
+      if(m1===m2) return "Las dos medias esperadas no pueden ser iguales (no habría efecto que detectar).";
+      return null;
+    }
+    if(d==="pareado"){
+      if(a.advancedDz){
+        var dzv = ssNum(a.dzInput);
+        if(dzv===null || dzv===0) return "Introduce un valor de dz distinto de cero.";
+        return null;
+      }
+      var dm=ssNum(a.diffMean), sdd=ssNum(a.sdDiff);
+      if(dm===null||sdd===null) return "Completa la diferencia media esperada y la desviación estándar de las diferencias.";
+      if(sdd<=0) return "La desviación estándar de las diferencias debe ser mayor que cero.";
+      if(dm===0) return "La diferencia media esperada no puede ser cero.";
+      return null;
+    }
+    if(d==="anova"){
+      if(a.advancedF){
+        var fv = ssNum(a.fInput);
+        if(fv===null || fv<=0) return "Introduce un valor de Cohen f mayor que cero.";
+        return null;
+      }
+      var k = a.k;
+      for(var i=0;i<k;i++){
+        if(ssNum(a.groupMeans[i])===null) return "Completa la media esperada de los "+k+" grupos.";
+      }
+      var sda = ssNum(a.sdAnova);
+      if(sda===null || sda<=0) return "La desviación estándar común debe ser mayor que cero.";
+      var means = a.groupMeans.slice(0,k).map(ssNum);
+      var allEqual = means.every(function(m){return m===means[0];});
+      if(allEqual) return "Las medias de los grupos no pueden ser todas iguales (no habría efecto que detectar).";
+      return null;
+    }
+    if(d==="dos_prop"){
+      var p1=ssPctToProp(a.p1), p2=ssPctToProp(a.p2);
+      if(p1===null||p2===null) return "Completa las dos proporciones esperadas (en %).";
+      if(p1<0||p1>1||p2<0||p2>1) return "Las proporciones deben estar entre 0 % y 100 %.";
+      if(p1===p2) return "Las dos proporciones no pueden ser iguales (no habría efecto que detectar).";
+      return null;
+    }
+    if(d==="prevalencia"){
+      var prev=ssPctToProp(a.prevalence), conf=ssNum(a.confidencePct), me=ssNum(a.marginErrorPct);
+      if(prev===null) return "Indica la prevalencia esperada (en %).";
+      if(prev<=0||prev>=1) return "La prevalencia esperada debe estar entre 0 % y 100 % (sin llegar a los extremos).";
+      if(conf===null||conf<=0||conf>=100) return "El nivel de confianza debe ser un porcentaje entre 0 y 100.";
+      if(me===null||me<=0||me>=100) return "El margen de error debe ser un porcentaje mayor que 0.";
+      return null;
+    }
+    if(d==="correlacion"){
+      var r = ssNum(a.corrR);
+      if(r===null) return "Indica la correlación mínima que quieres detectar.";
+      if(r<=-1||r>=1) return "La correlación debe estar entre -1 y 1 (sin llegar a los extremos).";
+      if(r===0) return "La correlación no puede ser 0: no habría asociación que detectar.";
+      return null;
+    }
+    return "Selecciona primero un diseño en el paso anterior.";
+  }
+  function ssAllocationApplies(){
+    return ssAnswers.design==="dos_indep" || ssAnswers.design==="dos_prop";
+  }
+
+  /* ---------- Renderers de cada paso ---------- */
+  function ssRenderEntry(){
+    var helpPanel = !ssShowHelp ? "" :
+      '<div class="q-card" style="margin-top:1rem;">'+
+        '<h3 style="margin-bottom:1rem;">Antes de empezar, ten a mano:</h3>'+
+        '<ul class="uses-list">'+
+          ["Objetivo principal.","Variable principal.","Número de grupos.","Diseño independiente o emparejado.","Diferencia mínima relevante.","Variabilidad esperada.","Nivel de significación.","Potencia estadística.","Pérdidas previstas.","Unidad experimental."]
+            .map(function(x){return '<li>'+x+'</li>';}).join("")+
+        '</ul></div>';
+    var modeHtml = ssMode ? "" :
+      '<div class="q-card" style="margin-top:1.2rem;">'+
+        '<span class="kicker">Antes de continuar</span>'+
+        '<h2>¿Qué necesitas calcular?</h2>'+
+        '<div class="options">'+
+          '<button type="button" class="option-btn" data-ss-mode="priori"><span>Quiero calcular cuántas unidades necesito</span><svg><use href="#i-arrow"/></svg></button>'+
+          '<button type="button" class="option-btn" data-ss-mode="achieved"><span>Ya sé cuántas unidades puedo incluir</span><svg><use href="#i-arrow"/></svg></button>'+
+        '</div></div>';
+    return '<div class="q-card">'+
+        '<span class="kicker">Antes de empezar</span>'+
+        '<h2>Cálculo de tamaño muestral</h2>'+
+        '<p class="q-help">El tamaño muestral es el número de participantes, animales o unidades experimentales necesarios para responder con suficiente precisión y potencia a la pregunta principal del estudio. El cálculo depende del diseño, la variable principal, el efecto que se desea detectar, el nivel de significación y la potencia estadística.</p>'+
+        '<div class="consequence-box" style="margin-top:1rem;"><p>El tamaño muestral debe calcularse antes de comenzar el estudio y debe basarse en el objetivo y el desenlace principal.</p></div>'+
+        '<div class="result-actions">'+
+          '<button type="button" class="btn btn-ghost" id="ss-toggle-help">¿Qué necesito antes de empezar?</button>'+
+        '</div>'+
+      '</div>'+helpPanel+modeHtml+
+      (ssMode ? '<div class="wizard-footer"><span></span><button class="btn btn-primary" id="ss-begin" type="button">Comenzar cálculo<svg><use href="#i-arrow"/></svg></button></div>' : "");
+  }
+
+  function ssRenderStep1(){
+    var a = ssAnswers;
+    var body = '<div class="q-card">'+ssStepperHtml()+
+      '<h2>¿En qué tipo de estudio quieres calcular el tamaño muestral?</h2>'+
+      '<div class="options">'+
+        [{v:"humanos",l:"Estudio con humanos"},{v:"animales",l:"Experimento con animales"},{v:"otro",l:"Otro estudio experimental u observacional"}].map(function(o){
+          return '<button type="button" class="option-btn" data-ss-field="studyType" data-ss-value="'+o.v+'" aria-pressed="'+(a.studyType===o.v)+'"><span>'+o.l+'</span>'+(a.studyType===o.v?'<svg><use href="#i-check"/></svg>':'')+'</button>';
+        }).join("")+
+      '</div>';
+    if(a.studyType==="animales"){
+      body += ssFieldGroup("¿Cuál es la unidad experimental?", ssChipRow("expUnit",
+        [{v:"animal",l:"Animal individual"},{v:"jaula",l:"Jaula"},{v:"camada",l:"Camada"},{v:"grupo_tanque",l:"Grupo o tanque"},{v:"cultivo",l:"Cultivo o preparación biológica independiente"},{v:"otra",l:"Otra"}], a.expUnit));
+      if(a.expUnit==="otra"){
+        body += ssFieldGroup("Describe la unidad experimental", ssNumInput("ss-exp-unit-other", a.expUnitOther, "ej. réplica de placa"));
+      }
+      body += '<div class="consequence-box"><p>Varias imágenes, cortes, pocillos o mediciones obtenidas del mismo animal no suelen constituir unidades experimentales independientes. Son normalmente submuestras o réplicas técnicas.</p></div>';
+      body += ssFieldGroup("Animales por unidad experimental", ssNumInput("ss-animals-per-unit", a.animalsPerUnit, "ej. 4"), "opcional, para mostrar el total de animales");
+    }
+    body += '</div>';
+    var err = ssValidateStep(1);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
+  }
+
+  function ssRenderStep2(){
+    var a = ssAnswers;
+    var vtExplain = {
+      continua:"Variable numérica medida en una escala continua (peso, presión arterial, concentración, expresión proteica…).",
+      binaria:"Variable con dos categorías (sí/no, respuesta/no respuesta, evento/no evento).",
+      proporcion:"Quieres estimar qué porcentaje de la población tiene una característica (prevalencia).",
+      correlacion:"Quieres detectar la asociación entre dos variables continuas."
+    };
+    var body = '<div class="q-card">'+ssStepperHtml()+
+      '<h2>Objetivo y variable principal</h2>'+
+      ssFieldGroup("Título o nombre del estudio", ssNumInput("ss-study-title", a.studyTitle, "ej. Ensayo XYZ"), "opcional")+
+      ssFieldGroup("Objetivo principal", '<textarea id="ss-objective" class="suggest-textarea" style="min-height:4.5rem;" placeholder="ej. Comparar el efecto del tratamiento X frente a placebo sobre la variable Y">'+escapeHtml(a.objective)+'</textarea>')+
+      ssFieldGroup("Nombre de la variable principal", ssNumInput("ss-var-name", a.varName, "ej. presión arterial sistólica"))+
+      ssFieldGroup("Unidad de medida", ssNumInput("ss-var-unit", a.varUnit, "ej. mmHg"), "si procede")+
+      ssFieldGroup("¿Qué tipo de variable principal tienes?", ssChipRow("varType",
+        [{v:"continua",l:"Continua"},{v:"binaria",l:"Binaria"},{v:"proporcion",l:"Proporción o prevalencia"},{v:"correlacion",l:"Correlación entre dos variables continuas"}], a.varType))+
+      (a.varType ? '<p class="q-help">'+vtExplain[a.varType]+'</p>' : "")+
+      '</div>';
+    var err = ssValidateStep(2);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
+  }
+
+  function ssRenderStep3(){
+    var a = ssAnswers;
+    var opts = ssDesignsForVarType(a.varType);
+    if(opts.length===1 && !a.design) a.design = opts[0].v;
+    var body = '<div class="q-card">'+ssStepperHtml()+
+      '<h2>Selecciona el diseño</h2>'+
+      (opts.length>1 ? '<div class="options">'+opts.map(function(o){
+        return '<button type="button" class="option-btn" data-ss-field="design" data-ss-value="'+o.v+'" aria-pressed="'+(a.design===o.v)+'"><span>'+o.l+'</span>'+(a.design===o.v?'<svg><use href="#i-check"/></svg>':'')+'</button>';
+      }).join("")+'</div>' :
+      '<div class="alt-box"><div><span class="alt-label">Diseño determinado por el tipo de variable</span><span class="alt-name">'+(opts[0]?opts[0].l:"")+'</span></div></div>')+
+      (a.design==="anova" ? '<div class="q-help" style="margin-top:1rem;">En esta primera versión, el ANOVA exige grupos de igual tamaño.</div>' : "")+
+      '</div>';
+    var err = ssValidateStep(3);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
+  }
+
+  var SS_COHEN_D = "Cohen d: 0,20 pequeño; 0,50 moderado; 0,80 grande.";
+  var SS_COHEN_F = "Cohen f: 0,10 pequeño; 0,25 moderado; 0,40 grande.";
+  var SS_COHEN_R = "Correlación r: 0,10 pequeña; 0,30 moderada; 0,50 grande.";
+  function ssEffectHelpBlock(cohenLine){
+    var panel = !ssShowEffectHelp ? "" :
+      '<div class="consequence-box" style="margin-top:.8rem;"><p>Puede proceder de estudios publicados similares, metaanálisis, datos históricos, un estudio piloto, o de la diferencia mínima clínicamente o científicamente relevante. Valores orientativos (no elijas automáticamente): '+cohenLine+' Estos puntos de corte dependen del contexto.</p></div>';
+    return '<button type="button" class="text-btn" id="ss-toggle-effect-help" style="margin:.4rem 0 .8rem;"><svg><use href="#i-info"/></svg>¿Cómo obtengo este valor?</button>'+panel;
+  }
+
+  function ssRenderStep4(){
+    var a = ssAnswers, d = a.design, body = '<div class="q-card">'+ssStepperHtml()+'<h2>Efecto esperado</h2>';
+
+    if(d==="dos_indep"){
+      body += ssEffectHelpBlock(SS_COHEN_D);
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-d" '+(a.advancedD?"checked":"")+' /> Modo avanzado: introducir Cohen d directamente</label>';
+      if(a.advancedD){
+        body += ssFieldGroup("Cohen d", ssNumInput("ss-d-input", a.dInput, "ej. 0.5"));
+      } else {
+        body += ssFieldGroup("Media esperada del grupo control", ssNumInput("ss-m1", a.m1, "ej. 120"));
+        body += ssFieldGroup("Media esperada del grupo experimental", ssNumInput("ss-m2", a.m2, "ej. 110"));
+        body += ssFieldGroup("Desviación estándar esperada (común)", ssNumInput("ss-sd", a.sd, "ej. 20"));
+        var m1=ssNum(a.m1), m2=ssNum(a.m2), sd=ssNum(a.sd);
+        if(m1!==null && m2!==null && sd!==null && sd>0){
+          var dcalc = Math.abs(m1-m2)/sd;
+          body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">Diferencia = '+ssFmt(Math.abs(m1-m2))+' · Cohen d = '+ssFmt(dcalc)+'</span></div></div>';
+        }
+      }
+    } else if(d==="pareado"){
+      body += ssEffectHelpBlock(SS_COHEN_D);
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-dz" '+(a.advancedDz?"checked":"")+' /> Modo avanzado: introducir dz directamente</label>';
+      if(a.advancedDz){
+        body += ssFieldGroup("dz (tamaño del efecto para datos emparejados)", ssNumInput("ss-dz-input", a.dzInput, "ej. 0.5"));
+      } else {
+        body += ssFieldGroup("Diferencia media esperada", ssNumInput("ss-diff-mean", a.diffMean, "ej. 5"));
+        body += ssFieldGroup("Desviación estándar de las diferencias", ssNumInput("ss-sd-diff", a.sdDiff, "ej. 10"));
+        body += '<p class="q-help">No debe utilizarse automáticamente la desviación estándar de las mediciones iniciales o finales: usa la desviación estándar de las diferencias (final − inicial) por sujeto.</p>';
+        var dm=ssNum(a.diffMean), sdd=ssNum(a.sdDiff);
+        if(dm!==null && sdd!==null && sdd>0){
+          body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">dz = '+ssFmt(Math.abs(dm)/sdd)+'</span></div></div>';
+        }
+      }
+    } else if(d==="anova"){
+      body += ssEffectHelpBlock(SS_COHEN_F);
+      body += '<label class="field-label" style="display:flex; align-items:center; gap:.5rem; margin-bottom:1rem;"><input type="checkbox" id="ss-toggle-advanced-f" '+(a.advancedF?"checked":"")+' /> Modo avanzado: introducir Cohen f directamente</label>';
+      if(a.advancedF){
+        body += ssFieldGroup("Cohen f", ssNumInput("ss-f-input", a.fInput, "ej. 0.25"));
+      } else {
+        body += ssFieldGroup("Número de grupos", '<div class="chip-field">'+[2,3,4,5,6,7,8].map(function(kk){
+          return '<button type="button" data-ss-field="k" data-ss-value="'+kk+'" aria-pressed="'+(a.k===kk)+'">'+kk+'</button>';
+        }).join("")+'</div>');
+        for(var i=0;i<a.k;i++){
+          body += ssFieldGroup("Media esperada — grupo "+(i+1), ssNumInput("ss-group-mean-"+i, a.groupMeans[i]||"", "ej. "+(100+i*5)));
+        }
+        body += ssFieldGroup("Desviación estándar común", ssNumInput("ss-sd-anova", a.sdAnova, "ej. 15"));
+        var means = a.groupMeans.slice(0,a.k).map(ssNum), sda = ssNum(a.sdAnova);
+        if(means.every(function(m){return m!==null;}) && sda!==null && sda>0){
+          var grand = means.reduce(function(s,x){return s+x;},0)/means.length;
+          var ssBetween = means.reduce(function(s,x){return s+(x-grand)*(x-grand);},0)/means.length;
+          var fcalc = Math.sqrt(ssBetween)/sda;
+          body += '<div class="alt-box"><div><span class="alt-label">Calculado automáticamente</span><span class="alt-name">Cohen f = '+ssFmt(fcalc)+'</span></div></div>';
+        }
+      }
+    } else if(d==="dos_prop"){
+      body += ssEffectHelpBlock("Ninguna convención de Cohen aplica directamente aquí: compara con la literatura de tu área.");
+      body += ssFieldGroup("Proporción esperada en el grupo control (%)", ssNumInput("ss-p1", a.p1, "ej. 30"));
+      body += ssFieldGroup("Proporción esperada en el grupo experimental (%)", ssNumInput("ss-p2", a.p2, "ej. 50"));
+    } else if(d==="prevalencia"){
+      body += ssFieldGroup("Prevalencia esperada (%)", ssNumInput("ss-prevalence", a.prevalence, "ej. 20"));
+      body += ssFieldGroup("Nivel de confianza (%)", ssNumInput("ss-confidence", a.confidencePct, "ej. 95"));
+      body += ssFieldGroup("Margen de error absoluto deseado (puntos porcentuales)", ssNumInput("ss-margin-error", a.marginErrorPct, "ej. 5"));
+    } else if(d==="correlacion"){
+      body += ssEffectHelpBlock(SS_COHEN_R);
+      body += ssFieldGroup("Correlación mínima que se desea detectar (r, entre -1 y 1, distinto de 0)", ssNumInput("ss-corr-r", a.corrR, "ej. 0.30"));
+      body += '<p class="q-help">Para el cálculo se usa el valor absoluto de r; el signo se conserva solo para la interpretación.</p>';
+    } else {
+      body += '<p class="q-help">Selecciona primero un diseño en el paso anterior.</p>';
+    }
+
+    if(d && d!=="prevalencia"){
+      body += ssFieldGroup("Fuente o justificación del efecto esperado", '<textarea id="ss-effect-source" class="suggest-textarea" style="min-height:4rem;" placeholder="ej. Metaanálisis de Smith et al. (2020); diferencia mínima clínicamente relevante acordada con el equipo clínico.">'+escapeHtml(a.effectSource)+'</textarea>');
+      body += '<div class="consequence-box"><p>No selecciones un efecto grande únicamente para reducir el número de participantes o animales. El efecto debe representar la menor diferencia que siga siendo científicamente o clínicamente relevante.</p></div>';
+    }
+    body += '</div>';
+    var err = ssValidateStep(4);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
+  }
+
+  function ssRenderStep5(){
+    var a = ssAnswers;
+    var body = '<div class="q-card">'+ssStepperHtml()+'<h2>Parámetros estadísticos</h2>'+
+      ssFieldGroup("Nivel de significación (α)", ssNumInput("ss-alpha", a.alpha, "0.05"))+
+      '<p class="q-help">Representa el riesgo aceptado de concluir que existe un efecto cuando en realidad no existe.</p>'+
+      ssFieldGroup("Potencia estadística", ssChipRow("powerPct", [{v:"80",l:"80 %"},{v:"90",l:"90 %"},{v:"95",l:"95 %"},{v:"custom",l:"Personalizada"}], a.powerPct))+
+      (a.powerPct==="custom" ? ssFieldGroup("Potencia personalizada (%)", ssNumInput("ss-power-custom", a.powerCustomPct, "ej. 85")) : "")+
+      '<p class="q-help">Representa la probabilidad de detectar el efecto especificado si realmente existe.</p>';
+    if(a.design!=="prevalencia"){
+      body += ssFieldGroup("Tipo de contraste", ssChipRow("tails",[{v:"bilateral",l:"Bilateral"},{v:"unilateral",l:"Unilateral"}], a.tails));
+      if(a.tails==="unilateral"){
+        body += '<div class="consequence-box"><p>Utiliza un contraste unilateral únicamente si una diferencia en la dirección contraria no tendría ninguna relevancia y esta decisión se ha establecido antes de analizar los datos.</p></div>';
+      }
+    }
+    if(ssAllocationApplies()){
+      body += ssFieldGroup("Asignación entre grupos", ssChipRow("allocation",[{v:"1:1",l:"1:1"},{v:"2:1",l:"2:1"},{v:"3:1",l:"3:1"},{v:"custom",l:"Personalizada"}], a.allocation));
+      if(a.allocation==="custom"){
+        body += ssFieldGroup("Relación personalizada (grupo 2 / grupo 1)", ssNumInput("ss-allocation-custom", a.allocationCustom, "ej. 1.5"));
+      }
+    }
+    body += '</div>';
+    var err = ssValidateStep(5);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true);
+  }
+
+  function ssRenderStep6(){
+    var a = ssAnswers;
+    var body = '<div class="q-card">'+ssStepperHtml()+
+      '<h2>¿Qué porcentaje de participantes o unidades experimentales podría perderse o no ser evaluable?</h2>'+
+      ssFieldGroup("Pérdidas previstas (%)", ssNumInput("ss-dropout", a.dropoutPct, "0"));
+    if(ssMode==="achieved"){
+      body += ssFieldGroup(a.studyType==="animales" ? "¿Cuántas unidades experimentales puedes incluir en total?" : "¿Cuántas unidades puedes reclutar o incluir en total?", ssNumInput("ss-available", a.ssAvailable, "ej. 100"));
+    }
+    body += '</div>';
+    var err = ssValidateStep(6);
+    return body + (err?'<p class="ss-error">'+err+'</p>':"") + ssFooterHtml(true, true, "Ver resultado");
+  }
+
+  function ssFmt(x, dec){
+    if(x===null||x===undefined||isNaN(x)) return "—";
+    dec = dec===undefined?2:dec;
+    return x.toLocaleString("es-ES", {minimumFractionDigits:0, maximumFractionDigits:dec});
+  }
+  // Formato numérico con punto decimal (no coma), para código R — nunca uses ssFmt() en bloques de código.
+  function ssFmtR(x, dec){
+    if(x===null||x===undefined||isNaN(x)) return "NA";
+    dec = dec===undefined?4:dec;
+    var s = x.toFixed(dec);
+    s = s.replace(/(\.\d*?)0+$/,"$1").replace(/\.$/,"");
+    return s;
+  }
+
+  /* ---------- Dispatcher principal ---------- */
+  function renderSSize(){
+    if(!ssShell) return;
+    var html;
+    if(ssStep===0) html = ssRenderEntry();
+    else if(ssStep===1) html = ssRenderStep1();
+    else if(ssStep===2) html = ssRenderStep2();
+    else if(ssStep===3) html = ssRenderStep3();
+    else if(ssStep===4) html = ssRenderStep4();
+    else if(ssStep===5) html = ssRenderStep5();
+    else if(ssStep===6) html = ssRenderStep6();
+    else html = ssRenderStep7();
+    html += '<p class="ss-limits">Esta calculadora proporciona una estimación basada en los supuestos introducidos. Los diseños complejos, como modelos mixtos, supervivencia, estudios multicéntricos, conglomerados, equivalencia, no inferioridad o análisis con múltiples desenlaces principales, pueden requerir métodos específicos o simulación. El resultado no sustituye la revisión del diseño por un profesional de estadística.</p>';
+    ssShell.innerHTML = html;
+    ssWireStep();
+  }
+
+  function ssGoNext(){
+    var err = ssValidateStep(ssStep);
+    if(err) return;
+    if(ssStep < 7) ssStep++;
+    renderSSize();
+    ssShell.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+  function ssGoBack(){
+    if(ssStep===0) return;
+    ssStep--;
+    renderSSize();
+  }
+  function ssRestart(){
+    ssStep = 0; ssMode = null; ssShowHelp = false; ssShowEffectHelp = false; ssSensOpen = false; ssRcodeOpen = false;
+    ssAnswers = {
+      studyType: null, dropoutPct: "0", expUnit: null, expUnitOther: "", animalsPerUnit: "",
+      studyTitle: "", objective: "", varName: "", varUnit: "", varType: null,
+      design: null,
+      m1: "", m2: "", sd: "", advancedD: false, dInput: "",
+      diffMean: "", sdDiff: "", advancedDz: false, dzInput: "",
+      k: 3, groupMeans: ["","",""], sdAnova: "", advancedF: false, fInput: "",
+      p1: "", p2: "",
+      prevalence: "", confidencePct: "95", marginErrorPct: "",
+      corrR: "",
+      effectSource: "",
+      alpha: "0.05", powerPct: "80", powerCustomPct: "",
+      tails: "bilateral",
+      allocation: "1:1", allocationCustom: "",
+      ssAvailable: ""
+    };
+    renderSSize();
+    ssShell.scrollIntoView({behavior:"smooth", block:"start"});
+  }
+
+  function ssWireStep(){
+    var backBtn = document.getElementById("ss-back");
+    if(backBtn) backBtn.addEventListener("click", ssGoBack);
+    var restartBtn = document.getElementById("ss-restart");
+    if(restartBtn) restartBtn.addEventListener("click", ssRestart);
+    var nextBtn = document.getElementById("ss-next");
+    if(nextBtn) nextBtn.addEventListener("click", ssGoNext);
+    var beginBtn = document.getElementById("ss-begin");
+    if(beginBtn) beginBtn.addEventListener("click", function(){ ssStep = 1; renderSSize(); ssShell.scrollIntoView({behavior:"smooth", block:"start"}); });
+    var toggleHelp = document.getElementById("ss-toggle-help");
+    if(toggleHelp) toggleHelp.addEventListener("click", function(){ ssShowHelp = !ssShowHelp; renderSSize(); });
+    var toggleEffectHelp = document.getElementById("ss-toggle-effect-help");
+    if(toggleEffectHelp) toggleEffectHelp.addEventListener("click", function(){ ssShowEffectHelp = !ssShowEffectHelp; renderSSize(); });
+    ssWireStep7();
+  }
+
+  ssShell.addEventListener("click", function(e){
+    var modeBtn = e.target.closest("[data-ss-mode]");
+    if(modeBtn){ ssMode = modeBtn.getAttribute("data-ss-mode"); renderSSize(); return; }
+    var chip = e.target.closest("[data-ss-field]");
+    if(chip){
+      var field = chip.getAttribute("data-ss-field");
+      var val = chip.getAttribute("data-ss-value");
+      if(field==="k"){ ssAnswers.k = parseInt(val,10); while(ssAnswers.groupMeans.length<ssAnswers.k) ssAnswers.groupMeans.push(""); }
+      else { ssAnswers[field] = val; }
+      renderSSize();
+      return;
+    }
+  });
+  ssShell.addEventListener("change", function(e){
+    var t = e.target;
+    if(t.id==="ss-toggle-advanced-d"){ ssAnswers.advancedD = t.checked; renderSSize(); return; }
+    if(t.id==="ss-toggle-advanced-dz"){ ssAnswers.advancedDz = t.checked; renderSSize(); return; }
+    if(t.id==="ss-toggle-advanced-f"){ ssAnswers.advancedF = t.checked; renderSSize(); return; }
+  });
+  ssShell.addEventListener("input", function(e){
+    var t = e.target, id = t.id;
+    var map = {
+      "ss-exp-unit-other":"expUnitOther","ss-animals-per-unit":"animalsPerUnit",
+      "ss-study-title":"studyTitle","ss-objective":"objective","ss-var-name":"varName","ss-var-unit":"varUnit",
+      "ss-m1":"m1","ss-m2":"m2","ss-sd":"sd","ss-d-input":"dInput",
+      "ss-diff-mean":"diffMean","ss-sd-diff":"sdDiff","ss-dz-input":"dzInput",
+      "ss-sd-anova":"sdAnova","ss-f-input":"fInput",
+      "ss-p1":"p1","ss-p2":"p2",
+      "ss-prevalence":"prevalence","ss-confidence":"confidencePct","ss-margin-error":"marginErrorPct",
+      "ss-corr-r":"corrR","ss-effect-source":"effectSource",
+      "ss-alpha":"alpha","ss-power-custom":"powerCustomPct","ss-allocation-custom":"allocationCustom",
+      "ss-dropout":"dropoutPct","ss-available":"ssAvailable"
+    };
+    if(map[id]){ ssAnswers[map[id]] = t.value; return; }
+    var gm = id.match(/^ss-group-mean-(\d+)$/);
+    if(gm){ ssAnswers.groupMeans[parseInt(gm[1],10)] = t.value; return; }
+  });
+
+  /* ============================================================
+     18. CÁLCULO DE TAMAÑO MUESTRAL — RESULTADO, SENSIBILIDAD, CÓDIGO R
+  ============================================================ */
+  function ssTailsNum(){ return ssAnswers.tails==="unilateral" ? 1 : 2; }
+  function ssTargetPower(){ var p = ssAnswers.powerPct==="custom" ? ssNum(ssAnswers.powerCustomPct) : ssNum(ssAnswers.powerPct); return p/100; }
+  function ssAlpha(){ return ssNum(ssAnswers.alpha); }
+  function ssDropout(){ return ssNum(ssAnswers.dropoutPct)/100; }
+  function ssAllocRatio(){
+    var a = ssAnswers.allocation;
+    if(a==="1:1") return 1;
+    if(a==="2:1") return 2;
+    if(a==="3:1") return 3;
+    return ssNum(ssAnswers.allocationCustom) || 1;
+  }
+  function ssUnitLabel(plural){
+    if(ssAnswers.studyType==="animales"){
+      var u = { animal:"animal", jaula:"jaula", camada:"camada", grupo_tanque:"grupo/tanque", cultivo:"cultivo o preparación", otra: (ssAnswers.expUnitOther||"unidad experimental") }[ssAnswers.expUnit] || "unidad experimental";
+      return plural ? (u+"s") : u;
+    }
+    return plural ? "participantes" : "participante";
+  }
+  function ssEffectOfDesign(){
+    var a = ssAnswers, d = a.design;
+    if(d==="dos_indep") return a.advancedD ? Math.abs(ssNum(a.dInput)) : Math.abs(ssNum(a.m1)-ssNum(a.m2))/ssNum(a.sd);
+    if(d==="pareado") return a.advancedDz ? Math.abs(ssNum(a.dzInput)) : Math.abs(ssNum(a.diffMean))/ssNum(a.sdDiff);
+    if(d==="anova"){
+      if(a.advancedF) return ssNum(a.fInput);
+      var means = a.groupMeans.slice(0,a.k).map(ssNum), sda = ssNum(a.sdAnova);
+      var grand = means.reduce(function(s,x){return s+x;},0)/means.length;
+      var ssBetween = means.reduce(function(s,x){return s+(x-grand)*(x-grand);},0)/means.length;
+      return Math.sqrt(ssBetween)/sda;
+    }
+    if(d==="dos_prop") return null; // se maneja aparte (dos parámetros)
+    if(d==="correlacion") return Math.abs(ssNum(a.corrR));
+    return null;
+  }
+  function ssTestName(){
+    var d = ssAnswers.design;
+    return { dos_indep:"t de Student para dos medias independientes", pareado:"t de Student para datos emparejados",
+      anova:"ANOVA de un factor", dos_prop:"Comparación de dos proporciones independientes (aproximación normal)",
+      prevalencia:"Estimación de una proporción/prevalencia con precisión determinada", correlacion:"Correlación de Pearson" }[d] || "";
+  }
+
+  /* ---- cálculo principal ---- */
+  function ssComputeResult(){
+    var a = ssAnswers, d = a.design, alpha = ssAlpha(), tailsN = ssTailsNum(), targetPower = ssTargetPower(), dropout = ssDropout();
+    var res = { design:d, mode:ssMode, testName:ssTestName(), alpha:alpha, targetPowerPct: targetPower*100, tails:a.tails, dropoutPct: dropout*100, groups:[] };
+
+    if(d==="dos_indep" || d==="dos_prop"){
+      var ratio = ssAllocRatio();
+      var powerFn, effectLabel, effectVal;
+      if(d==="dos_indep"){
+        effectVal = ssEffectOfDesign();
+        effectLabel = "Cohen d = " + ssFmt(effectVal,3);
+        powerFn = function(n1,n2){ return ssPowerT2(n1,n2,effectVal,alpha,tailsN); };
+      } else {
+        var p1 = ssPctToProp(a.p1), p2 = ssPctToProp(a.p2);
+        effectVal = Math.abs(p1-p2);
+        effectLabel = "Diferencia de proporciones = " + ssFmt(effectVal*100,1) + " puntos porcentuales";
+        powerFn = function(n1,n2){ return ssPowerProp2(n1,n2,p1,p2,alpha,tailsN); };
+      }
+      if(ssMode==="priori"){
+        var n1 = ssSolveN(function(n1v){ var n2v=Math.max(2,Math.round(n1v*ratio)); return powerFn(n1v,n2v); }, targetPower);
+        if(n1===null){ res.error = "No se alcanza la potencia solicitada con un tamaño muestral razonable. Revisa los parámetros (el efecto esperado podría ser demasiado pequeño)."; return res; }
+        var n2 = Math.max(2, Math.round(n1*ratio));
+        res.powerAchievedPct = powerFn(n1,n2)*100;
+        res.groups = [
+          { label:"Grupo control", nAnalyzable:n1, nRecruit:Math.ceil(n1/(1-dropout)) },
+          { label:"Grupo experimental", nAnalyzable:n2, nRecruit:Math.ceil(n2/(1-dropout)) }
+        ];
+      } else {
+        var avail = ssNum(a.ssAvailable);
+        var n1a = Math.round(avail/(1+ratio)), n2a = avail - n1a;
+        var an1 = Math.max(2, Math.floor(n1a*(1-dropout))), an2 = Math.max(2, Math.floor(n2a*(1-dropout)));
+        res.groups = [{ label:"Grupo control", nAvailable:n1a, nAnalyzable:an1 }, { label:"Grupo experimental", nAvailable:n2a, nAnalyzable:an2 }];
+        res.powerAchievedPct = powerFn(an1,an2)*100;
+        res.mde80 = ssSolveEffect(function(ev){ var pf = d==="dos_indep" ? function(n1v,n2v){return ssPowerT2(n1v,n2v,ev,alpha,tailsN);} : function(n1v,n2v){return ssPowerProp2(n1v,n2v,p1,p1+ev,alpha,tailsN);}; return pf(an1,an2); }, 0.8, 1e-4, d==="dos_indep"?5:0.9);
+        res.mde90 = ssSolveEffect(function(ev){ var pf = d==="dos_indep" ? function(n1v,n2v){return ssPowerT2(n1v,n2v,ev,alpha,tailsN);} : function(n1v,n2v){return ssPowerProp2(n1v,n2v,p1,p1+ev,alpha,tailsN);}; return pf(an1,an2); }, 0.9, 1e-4, d==="dos_indep"?5:0.9);
+      }
+      res.effectLabel = effectLabel; res.effectVal = effectVal;
+      if(d==="dos_prop"){ res.p1 = ssPctToProp(a.p1)*100; res.p2 = ssPctToProp(a.p2)*100; }
+    }
+
+    else if(d==="pareado"){
+      var dz = ssEffectOfDesign();
+      res.effectLabel = "dz = " + ssFmt(dz,3); res.effectVal = dz;
+      var powerFnP = function(n){ return ssPowerPaired(n,dz,alpha,tailsN); };
+      if(ssMode==="priori"){
+        var n = ssSolveN(powerFnP, targetPower);
+        if(n===null){ res.error = "No se alcanza la potencia solicitada con un tamaño muestral razonable."; return res; }
+        res.powerAchievedPct = powerFnP(n)*100;
+        res.groups = [{ label:"Pares / sujetos", nAnalyzable:n, nRecruit:Math.ceil(n/(1-dropout)) }];
+      } else {
+        var availP = ssNum(a.ssAvailable);
+        var anP = Math.max(3, Math.floor(availP*(1-dropout)));
+        res.groups = [{ label:"Pares / sujetos", nAvailable:availP, nAnalyzable:anP }];
+        res.powerAchievedPct = powerFnP(anP)*100;
+        res.mde80 = ssSolveEffect(function(ev){ return ssPowerPaired(anP,ev,alpha,tailsN); }, 0.8, 1e-4, 5);
+        res.mde90 = ssSolveEffect(function(ev){ return ssPowerPaired(anP,ev,alpha,tailsN); }, 0.9, 1e-4, 5);
+      }
+    }
+
+    else if(d==="anova"){
+      var f = ssEffectOfDesign(), k = a.k;
+      res.effectLabel = "Cohen f = " + ssFmt(f,3); res.effectVal = f; res.k = k;
+      var powerFnA = function(n){ return ssPowerAnova(n,k,f,alpha); };
+      if(ssMode==="priori"){
+        var nA = ssSolveN(powerFnA, targetPower);
+        if(nA===null){ res.error = "No se alcanza la potencia solicitada con un tamaño muestral razonable."; return res; }
+        res.powerAchievedPct = powerFnA(nA)*100;
+        for(var gi=0; gi<k; gi++) res.groups.push({ label:"Grupo "+(gi+1), nAnalyzable:nA, nRecruit:Math.ceil(nA/(1-dropout)) });
+      } else {
+        var availA = ssNum(a.ssAvailable);
+        var anA = Math.max(2, Math.floor((availA/k)*(1-dropout)));
+        for(var gi2=0; gi2<k; gi2++) res.groups.push({ label:"Grupo "+(gi2+1), nAvailable:Math.floor(availA/k), nAnalyzable:anA });
+        res.powerAchievedPct = powerFnA(anA)*100;
+        res.mde80 = ssSolveEffect(function(ev){ return ssPowerAnova(anA,k,ev,alpha); }, 0.8, 1e-4, 3);
+        res.mde90 = ssSolveEffect(function(ev){ return ssPowerAnova(anA,k,ev,alpha); }, 0.9, 1e-4, 3);
+      }
+    }
+
+    else if(d==="prevalencia"){
+      var prev = ssPctToProp(a.prevalence), conf = ssNum(a.confidencePct)/100, me = ssNum(a.marginErrorPct)/100;
+      res.prevalence = prev*100; res.confidence = conf*100; res.marginError = me*100;
+      if(ssMode==="priori"){
+        var nPr = ssNPrevalence(prev, conf, me);
+        res.groups = [{ label:ssUnitLabel(true), nAnalyzable:nPr, nRecruit:Math.ceil(nPr/(1-dropout)) }];
+      } else {
+        var availPr = ssNum(a.ssAvailable);
+        var anPr = Math.max(1, Math.floor(availPr*(1-dropout)));
+        var z = ssQnorm(1-(1-conf)/2);
+        var meAchieved = z*Math.sqrt(prev*(1-prev)/anPr);
+        res.groups = [{ label:ssUnitLabel(true), nAvailable:availPr, nAnalyzable:anPr }];
+        res.marginErrorAchievedPct = meAchieved*100;
+      }
+    }
+
+    else if(d==="correlacion"){
+      var r = ssEffectOfDesign();
+      res.effectLabel = "r = " + ssFmt(r,3); res.effectVal = r;
+      var powerFnC = function(n){ return n>3 ? ssPowerCorr(n,r,alpha,tailsN) : 0; };
+      if(ssMode==="priori"){
+        var nC = ssSolveN(powerFnC, targetPower);
+        if(nC===null){ res.error = "No se alcanza la potencia solicitada con un tamaño muestral razonable."; return res; }
+        res.powerAchievedPct = powerFnC(nC)*100;
+        res.groups = [{ label:"Sujetos / unidades", nAnalyzable:nC, nRecruit:Math.ceil(nC/(1-dropout)) }];
+      } else {
+        var availC = ssNum(a.ssAvailable);
+        var anC = Math.max(4, Math.floor(availC*(1-dropout)));
+        res.groups = [{ label:"Sujetos / unidades", nAvailable:availC, nAnalyzable:anC }];
+        res.powerAchievedPct = powerFnC(anC)*100;
+        res.mde80 = ssSolveEffect(function(ev){ return ssPowerCorr(anC,ev,alpha,tailsN); }, 0.8, 1e-4, 0.999);
+        res.mde90 = ssSolveEffect(function(ev){ return ssPowerCorr(anC,ev,alpha,tailsN); }, 0.9, 1e-4, 0.999);
+      }
+    }
+
+    if(res.groups && res.groups.length){
+      res.totalAnalyzable = res.groups.reduce(function(s,g){return s+g.nAnalyzable;},0);
+      if(res.groups[0].nRecruit!==undefined) res.totalRecruit = res.groups.reduce(function(s,g){return s+g.nRecruit;},0);
+      if(res.groups[0].nAvailable!==undefined) res.totalAvailable = res.groups.reduce(function(s,g){return s+g.nAvailable;},0);
+    }
+    if(a.studyType==="animales" && ssNum(a.animalsPerUnit) && res.totalRecruit){
+      res.totalAnimals = Math.ceil(res.totalRecruit * ssNum(a.animalsPerUnit));
+    }
+    return res;
+  }
+
+  /* ---- interpretación automática ---- */
+  function ssBuildInterpretation(res){
+    var a = ssAnswers, d = a.design;
+    if(res.error) return res.error;
+    var sujeto = ssUnitLabel(true);
+    if(ssMode==="achieved"){
+      if(d==="prevalencia"){
+        return "Con " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables, el margen de error real de la estimación de la prevalencia es de ±" + ssFmt(res.marginErrorAchievedPct,1) + " puntos porcentuales, con un " + ssFmt(res.confidence,0) + " % de confianza.";
+      }
+      return "Con el tamaño disponible, el estudio alcanzaría una potencia del " + ssFmt(res.powerAchievedPct,1) + " % para detectar el efecto especificado (" + res.effectLabel + ") con un nivel de significación de " + ssFmt(res.alpha,3) + ". Si esa potencia se considera insuficiente, el efecto mínimo detectable con una potencia del 80 % sería de " + ssFmt(res.mde80,3) + ", y con una potencia del 90 % de " + ssFmt(res.mde90,3) + ".";
+    }
+    if(d==="dos_indep"){
+      return "Con este diseño, el estudio tendrá una potencia del " + ssFmt(res.targetPowerPct,0) + " % para detectar una diferencia de al menos " + ssFmt(Math.abs(ssNum(a.m1)-ssNum(a.m2))||res.effectVal,2) + " unidades entre los grupos" + (a.sd?(", asumiendo una desviación estándar de " + ssFmt(ssNum(a.sd),2)):"") + " y un nivel de significación de " + ssFmt(res.alpha,3) + ".";
+    }
+    if(d==="pareado"){
+      return "Con este diseño emparejado, el estudio tendrá una potencia del " + ssFmt(res.targetPowerPct,0) + " % para detectar una diferencia media de al menos " + (ssNum(a.diffMean)!==null?ssFmt(Math.abs(ssNum(a.diffMean)),2):ssFmt(res.effectVal,2)) + " entre las dos mediciones, con un nivel de significación de " + ssFmt(res.alpha,3) + ".";
+    }
+    if(d==="anova"){
+      return "Con " + res.k + " grupos, el estudio tendrá una potencia del " + ssFmt(res.targetPowerPct,0) + " % para detectar un tamaño del efecto f de Cohen de al menos " + ssFmt(res.effectVal,3) + " entre las medias de los grupos, con un nivel de significación de " + ssFmt(res.alpha,3) + ".";
+    }
+    if(d==="dos_prop"){
+      return "Con este diseño, el estudio tendrá una potencia del " + ssFmt(res.targetPowerPct,0) + " % para detectar una diferencia entre proporciones de al menos " + ssFmt(res.effectVal*100,1) + " puntos porcentuales (" + ssFmt(res.p1,1) + " % frente a " + ssFmt(res.p2,1) + " %), con un nivel de significación de " + ssFmt(res.alpha,3) + ".";
+    }
+    if(d==="prevalencia"){
+      return "Con " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables, la estimación de una prevalencia esperada del " + ssFmt(res.prevalence,1) + " % tendrá un margen de error de ±" + ssFmt(res.marginError,1) + " puntos porcentuales, con un " + ssFmt(res.confidence,0) + " % de confianza.";
+    }
+    if(d==="correlacion"){
+      return "El estudio tendrá una potencia del " + ssFmt(res.targetPowerPct,0) + " % para detectar una correlación de al menos |r| = " + ssFmt(res.effectVal,2) + (ssNum(a.corrR)<0?" (dirección negativa)":"") + ", con un nivel de significación de " + ssFmt(res.alpha,3) + ".";
+    }
+    return "";
+  }
+
+  /* ---- textos copiables ---- */
+  function ssBuildResultText(res){
+    if(res.error) return res.error;
+    var sujeto = ssUnitLabel(true);
+    if(ssMode==="achieved"){
+      if(res.design==="prevalencia"){
+        return "Con " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables, el margen de error real es de ±" + ssFmt(res.marginErrorAchievedPct,1) + " puntos porcentuales.";
+      }
+      return "Con el tamaño disponible (" + ssFmt(res.totalAvailable,0) + " en total), el estudio alcanza una potencia real del " + ssFmt(res.powerAchievedPct,1) + " %.";
+    }
+    if(res.groups.length===2){
+      return "Se necesitan " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables en el grupo 1 y " + ssFmt(res.groups[1].nAnalyzable,0) + " en el grupo 2 (" + ssFmt(res.totalAnalyzable,0) + " en total). Considerando un " + ssFmt(res.dropoutPct,0) + " % de pérdidas, deberán reclutarse " + ssFmt(res.groups[0].nRecruit,0) + " y " + ssFmt(res.groups[1].nRecruit,0) + " respectivamente (" + ssFmt(res.totalRecruit,0) + " en total).";
+    }
+    if(res.design==="anova"){
+      return "Se necesitan " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables por grupo (" + res.k + " grupos, " + ssFmt(res.totalAnalyzable,0) + " en total). Considerando un " + ssFmt(res.dropoutPct,0) + " % de pérdidas, deberán reclutarse " + ssFmt(res.groups[0].nRecruit,0) + " por grupo (" + ssFmt(res.totalRecruit,0) + " en total).";
+    }
+    if(res.design==="prevalencia"){
+      return "Se necesitan " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables para un margen de error de ±" + ssFmt(res.marginError,1) + " puntos porcentuales. Considerando un " + ssFmt(res.dropoutPct,0) + " % de pérdidas, deberán incluirse " + ssFmt(res.groups[0].nRecruit,0) + ".";
+    }
+    return "Se necesitan " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + " analizables. Considerando un " + ssFmt(res.dropoutPct,0) + " % de pérdidas, deberán reclutarse " + ssFmt(res.groups[0].nRecruit,0) + ".";
+  }
+
+  function ssBuildMethodologyText(res){
+    if(res.error) return res.error;
+    var a = ssAnswers, sujeto = ssUnitLabel(true);
+    var lines = [];
+    var tailsTxt = a.tails==="unilateral" ? "un contraste unilateral" : "un contraste bilateral";
+    var pieces = [];
+    pieces.push("El tamaño muestral se calculó " + (ssMode==="priori"?"a priori":"de forma prospectiva sobre una muestra disponible") + " para " + (function(){
+      if(a.design==="dos_indep") return "detectar una diferencia mínima de " + (a.advancedD? ("Cohen d = "+ssFmt(res.effectVal,2)) : (ssFmt(Math.abs(ssNum(a.m1)-ssNum(a.m2)),2)+" unidades entre el grupo experimental y el grupo control, asumiendo una desviación estándar común de "+ssFmt(ssNum(a.sd),2)+" unidades, equivalente a un tamaño del efecto de Cohen d = "+ssFmt(res.effectVal,2)));
+      if(a.design==="pareado") return "detectar una diferencia media de " + (a.advancedDz? ("dz = "+ssFmt(res.effectVal,2)) : (ssFmt(Math.abs(ssNum(a.diffMean)),2)+", con una desviación estándar de las diferencias de "+ssFmt(ssNum(a.sdDiff),2)+", equivalente a dz = "+ssFmt(res.effectVal,2)));
+      if(a.design==="anova") return "detectar un tamaño del efecto f de Cohen de al menos " + ssFmt(res.effectVal,2) + " entre las medias de " + res.k + " grupos";
+      if(a.design==="dos_prop") return "detectar una diferencia entre proporciones de " + ssFmt(res.p1,1) + " % frente a " + ssFmt(res.p2,1) + " %";
+      if(a.design==="prevalencia") return "estimar una prevalencia esperada del " + ssFmt(res.prevalence,1) + " % con un margen de error absoluto de ±" + ssFmt(res.marginError,1) + " puntos porcentuales";
+      if(a.design==="correlacion") return "detectar una correlación mínima de |r| = " + ssFmt(res.effectVal,2);
+      return "";
+    })() + ".");
+    if(a.design!=="prevalencia"){
+      pieces.push("Considerando " + tailsTxt + ", un nivel de significación de " + ssFmt(res.alpha,3) + (ssMode==="priori" ? (", una potencia estadística del " + ssFmt(res.targetPowerPct,0) + " %") : "") + (ssAllocationApplies() ? (" y una asignación " + a.allocation) : "") + ", se estimó que " + (ssMode==="priori" ? ("eran necesari" + (res.groups.length===1?"as ":"as ") + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + (res.groups.length>1?" por grupo":"")) : ("con " + ssFmt(res.totalAvailable||res.groups[0].nAvailable,0) + " " + sujeto + " disponibles se alcanzaría una potencia del " + ssFmt(res.powerAchievedPct,1) + " %")) + ".");
+    } else {
+      pieces.push("Con un nivel de confianza del " + ssFmt(res.confidence,0) + " %, se estimó que eran necesari" + "as " + ssFmt(res.groups[0].nAnalyzable,0) + " " + sujeto + ".");
+    }
+    if(ssMode==="priori"){
+      pieces.push("Tras considerar un " + ssFmt(res.dropoutPct,0) + " % de pérdidas, la muestra final necesaria fue de " + ssFmt(res.groups[0].nRecruit,0) + " " + sujeto + (res.groups.length>1?" por grupo":"") + (res.totalRecruit ? (", " + ssFmt(res.totalRecruit,0) + " en total") : "") + ".");
+    }
+    if(a.studyType==="animales"){
+      var uLabel = ssUnitLabel(false);
+      pieces.push("La unidad experimental fue " + uLabel + ". Las mediciones repetidas, cortes o imágenes obtenidas de una misma unidad experimental no se consideraron observaciones independientes.");
+    }
+    return pieces.join(" ");
+  }
+
+  /* ---- código R ---- */
+  function ssBuildRCode(res){
+    if(res.error) return "# " + res.error;
+    var a = ssAnswers, lines = [];
+    var altR = a.tails==="unilateral" ? '"greater"' : '"two.sided"';
+    lines.push("# Código generado a partir de los valores introducidos en la calculadora");
+    lines.push("library(pwr)");
+    lines.push("");
+    if(a.design==="dos_indep"){
+      lines.push("d <- " + ssFmtR(res.effectVal,4) + "  # Cohen d");
+      if(a.allocation==="1:1"){
+        lines.push('pwr.t.test(d = d, sig.level = ' + res.alpha + ', power = ' + (res.targetPowerPct/100) + ', type = "two.sample", alternative = ' + altR + ')');
+      } else {
+        lines.push("# Asignación distinta de 1:1: pwr.t2n.test() no resuelve n directamente,");
+        lines.push("# solo verifica la potencia alcanzada con los n ya calculados por la calculadora.");
+        lines.push('pwr.t2n.test(n1 = ' + res.groups[0].nAnalyzable + ', n2 = ' + res.groups[1].nAnalyzable + ', d = d, sig.level = ' + res.alpha + ', alternative = ' + altR + ')');
+      }
+    } else if(a.design==="pareado"){
+      lines.push("dz <- " + ssFmtR(res.effectVal,4) + "  # tamaño del efecto para datos emparejados");
+      lines.push('pwr.t.test(d = dz, sig.level = ' + res.alpha + ', power = ' + (res.targetPowerPct/100) + ', type = "paired", alternative = ' + altR + ')');
+    } else if(a.design==="anova"){
+      lines.push("f <- " + ssFmtR(res.effectVal,4) + "  # Cohen f");
+      lines.push('pwr.anova.test(k = ' + res.k + ', f = f, sig.level = ' + res.alpha + ', power = ' + (res.targetPowerPct/100) + ')');
+    } else if(a.design==="dos_prop"){
+      lines.push("p1 <- " + ssFmtR(res.p1/100,4) + "; p2 <- " + ssFmtR(res.p2/100,4));
+      lines.push("# Aviso: la calculadora usa la aproximación normal clásica (varianza combinada bajo H0,");
+      lines.push("# no combinada bajo H1), que es la que reproduce el ejemplo habitual de referencia.");
+      lines.push("# pwr.2p.test() usa la transformación arcoseno (h de Cohen) y puede dar un n distinto:");
+      lines.push("# no son intercambiables ni deben presentarse como el mismo resultado.");
+      lines.push('pwr.2p.test(h = ES.h(p1, p2), sig.level = ' + res.alpha + ', power = ' + (res.targetPowerPct/100) + ', alternative = ' + altR + ')');
+    } else if(a.design==="prevalencia"){
+      lines.push("p <- " + ssFmtR(res.prevalence/100,4) + "; nivel_confianza <- " + ssFmtR(res.confidence/100,4) + "; margen_error <- " + ssFmtR(res.marginError/100,4));
+      lines.push("z <- qnorm(1 - (1 - nivel_confianza)/2)");
+      lines.push("n <- ceiling(z^2 * p * (1-p) / margen_error^2)");
+      lines.push("n");
+    } else if(a.design==="correlacion"){
+      lines.push("r <- " + ssFmtR(res.effectVal,4));
+      lines.push('pwr.r.test(r = r, sig.level = ' + res.alpha + ', power = ' + (res.targetPowerPct/100) + ', alternative = ' + altR + ')');
+    }
+    lines.push("");
+    lines.push("# Ajuste por pérdidas previstas (redondeando siempre hacia arriba)");
+    lines.push("perdidas <- " + ssFmtR(res.dropoutPct/100,4));
+    lines.push("n_analizable <- " + (res.groups[0].nAnalyzable || "n") + "  # por grupo/muestra, según el diseño");
+    lines.push("n_incluir <- ceiling(n_analizable / (1 - perdidas))");
+    lines.push("n_incluir");
+    return lines.join("\n");
+  }
+
+  /* ---- análisis de sensibilidad ---- */
+  function ssSensitivityData(res){
+    var a = ssAnswers, d = a.design, alpha = ssAlpha(), tailsN = ssTailsNum();
+    if(d==="prevalencia" || res.error) return null;
+    var scenarios = [{k:"menor",l:"Efecto 20 % menor",factor:0.8},{k:"actual",l:"Efecto introducido",factor:1},{k:"mayor",l:"Efecto 20 % mayor",factor:1.2}];
+    var powers = [0.8,0.9];
+    var rows = [];
+    var curveData = {};
+    scenarios.forEach(function(sc){
+      var powerFn1;
+      if(d==="dos_indep"){ var ev=res.effectVal*sc.factor; powerFn1=function(n){ var n2=Math.max(2,Math.round(n*ssAllocRatio())); return ssPowerT2(n,n2,ev,alpha,tailsN); }; }
+      else if(d==="pareado"){ var ev2=res.effectVal*sc.factor; powerFn1=function(n){ return ssPowerPaired(n,ev2,alpha,tailsN); }; }
+      else if(d==="anova"){ var ev3=res.effectVal*sc.factor; powerFn1=function(n){ return ssPowerAnova(n,res.k,ev3,alpha); }; }
+      else if(d==="dos_prop"){ var p1=ssPctToProp(a.p1); var p2s=p1+(ssPctToProp(a.p2)-p1)*sc.factor; powerFn1=function(n){ var n2=Math.max(2,Math.round(n*ssAllocRatio())); return ssPowerProp2(n,n2,p1,p2s,alpha,tailsN); }; }
+      else if(d==="correlacion"){ var evr=Math.min(0.97,res.effectVal*sc.factor); powerFn1=function(n){ return n>3?ssPowerCorr(n,evr,alpha,tailsN):0; }; }
+      var rowNs = {};
+      powers.forEach(function(pw){ rowNs[pw] = ssSolveN(powerFn1, pw); });
+      rows.push({ label:sc.l, key:sc.k, n80:rowNs[0.8], n90:rowNs[0.9] });
+      curveData[sc.k] = powerFn1;
+    });
+    return { rows:rows, curveFns:curveData, scenarios:scenarios };
+  }
+  function ssSvgSensitivityChart(sens){
+    if(!sens) return "";
+    var maxN = 0;
+    sens.rows.forEach(function(r){ maxN = Math.max(maxN, r.n80||0, r.n90||0); });
+    if(maxN<=0) return "";
+    maxN = Math.ceil(maxN*1.15);
+    var W=560,H=260,padL=48,padB=34,padT=12,padR=14;
+    var plotW=W-padL-padR, plotH=H-padT-padB;
+    function xPix(n){ return padL + (n/maxN)*plotW; }
+    function yPix(p){ return padT + (1-p)*plotH; }
+    var colors = {menor:"var(--cat-no_parametrica)", actual:"var(--accent)", mayor:"var(--cat-regresion)"};
+    var paths = sens.scenarios.map(function(sc){
+      var fn = sens.curveFns[sc.k];
+      var pts = [];
+      var steps = 40;
+      for(var i=0;i<=steps;i++){
+        var n = Math.max(2, Math.round(2 + (maxN-2)*i/steps));
+        var p = fn(n);
+        pts.push(xPix(n).toFixed(1)+","+yPix(Math.min(1,p)).toFixed(1));
+      }
+      return '<polyline points="'+pts.join(" ")+'" fill="none" stroke="'+colors[sc.k]+'" stroke-width="2"/>';
+    }).join("");
+    var gridY = [0,0.2,0.4,0.6,0.8,1.0].map(function(p){
+      return '<line x1="'+padL+'" y1="'+yPix(p).toFixed(1)+'" x2="'+(W-padR)+'" y2="'+yPix(p).toFixed(1)+'" stroke="var(--border)" stroke-width="1"/>'+
+        '<text x="'+(padL-8)+'" y="'+(yPix(p)+4).toFixed(1)+'" font-size="10" fill="var(--text-muted)" text-anchor="end">'+Math.round(p*100)+'%</text>';
+    }).join("");
+    var xTicks = [0,0.25,0.5,0.75,1.0].map(function(f){
+      var n = Math.round(maxN*f);
+      return '<text x="'+xPix(n).toFixed(1)+'" y="'+(H-padB+16)+'" font-size="10" fill="var(--text-muted)" text-anchor="middle">'+n+'</text>';
+    }).join("");
+    var legend = sens.scenarios.map(function(sc,i){
+      return '<g transform="translate('+(padL+i*160)+',12)"><line x1="0" y1="0" x2="16" y2="0" stroke="'+colors[sc.k]+'" stroke-width="2.5"/><text x="21" y="4" font-size="10" fill="var(--text)">'+sc.l+'</text></g>';
+    }).join("");
+    return '<svg viewBox="0 0 '+W+' '+H+'" class="ss-sens-chart" role="img" aria-label="Potencia estadística en función del tamaño muestral, para tres escenarios de efecto">'+
+      gridY + xTicks +
+      '<line x1="'+padL+'" y1="'+(H-padB)+'" x2="'+(W-padR)+'" y2="'+(H-padB)+'" stroke="var(--text-muted)" stroke-width="1"/>'+
+      '<text x="'+(W/2)+'" y="'+(H-2)+'" font-size="10.5" fill="var(--text-muted)" text-anchor="middle">Tamaño muestral (n)</text>'+
+      paths + legend +
+      '</svg>';
+  }
+
+  /* ---- render paso 7 ---- */
+  var ssLastResult = null;
+  function ssRenderStep7(){
+    var res = ssComputeResult();
+    ssLastResult = res;
+    var a = ssAnswers;
+    var body = '<div class="q-card">'+ssStepperHtml()+'<h2>Resultado</h2>';
+    if(res.error){
+      body += '<div class="consequence-box"><p>'+escapeHtml(res.error)+'</p></div></div>';
+      return body + ssFooterHtml(true, false) + '<div class="wizard-footer"><span></span><button class="btn btn-primary" id="ss-modify" type="button">Modificar datos</button></div>';
+    }
+
+    var resultText = ssBuildResultText(res);
+    var interpretation = ssBuildInterpretation(res);
+    var methodology = ssBuildMethodologyText(res);
+
+    var verdictValue, verdictSub;
+    if(res.design==="prevalencia" && ssMode==="achieved"){ verdictValue = "±"+ssFmt(res.marginErrorAchievedPct,1)+" pp"; verdictSub = "Margen de error real alcanzado"; }
+    else if(ssMode==="achieved"){ verdictValue = ssFmt(res.powerAchievedPct,1)+" %"; verdictSub = "Potencia real alcanzable"; }
+    else { verdictValue = ssFmt(res.groups[0].nAnalyzable,0) + (res.groups.length>1||res.k>1 ? " por grupo" : ""); verdictSub = "Tamaño muestral necesario"; }
+
+    body += '<div class="verdict-card is-valid">'+
+      '<div class="verdict-head"><span class="verdict-icon"><svg><use href="#i-check"/></svg></span>'+
+      '<div><span class="verdict-title">'+verdictSub+'</span><span class="verdict-value">'+verdictValue+'</span></div></div>'+
+      '<p style="font-size:.92rem; line-height:1.6;">'+escapeHtml(resultText)+'</p>'+
+      '</div>';
+
+    // tabla resumen
+    var rows = [
+      ["Tipo de estudio", {humanos:"Con humanos",animales:"Experimento con animales",otro:"Otro"}[a.studyType]],
+      ["Variable principal", a.varName + (a.varUnit?(" ("+a.varUnit+")"):"")],
+      ["Diseño", res.testName],
+      ["Prueba estadística", res.testName],
+      ["Tamaño del efecto", res.effectLabel || "—"],
+      ["Nivel de significación (α)", ssFmt(res.alpha,3)],
+      ["Potencia estadística", res.design!=="prevalencia" ? (ssMode==="priori"?ssFmt(res.targetPowerPct,0)+" %":ssFmt(res.powerAchievedPct,1)+" % (alcanzada)") : "No aplica (diseño de precisión)"],
+      ["Contraste", res.design!=="prevalencia" ? (a.tails==="unilateral"?"Unilateral":"Bilateral") : "No aplica"],
+      ["Asignación entre grupos", ssAllocationApplies() ? a.allocation : "No aplica"],
+      ["Pérdidas previstas", ssFmt(res.dropoutPct,0)+" %"],
+      ["Tamaño analizable", res.groups.map(function(g){return g.label+": "+ssFmt(g.nAnalyzable,0);}).join(" · ")],
+      ["Tamaño final", ssMode==="priori" ? res.groups.map(function(g){return g.label+": "+ssFmt(g.nRecruit,0);}).join(" · ") : "Disponible: "+ssFmt(res.totalAvailable,0)]
+    ];
+    if(res.totalAnimals) rows.push(["Total de animales", ssFmt(res.totalAnimals,0)]);
+    body += '<div class="ss-table-wrap"><table class="ss-table"><tbody>'+
+      rows.map(function(r){ return '<tr><th>'+r[0]+'</th><td>'+escapeHtml(String(r[1]))+'</td></tr>'; }).join("")+
+      '</tbody></table></div>';
+
+    body += '<h4 style="margin-top:1.4rem;">Interpretación</h4><p style="font-size:.92rem; line-height:1.6;">'+escapeHtml(interpretation)+'</p>';
+
+    body += '<h4 style="margin-top:1.2rem;">Texto para metodología</h4>'+
+      '<textarea id="ss-methodology-text" class="suggest-textarea" style="min-height:8rem; font-size:.85rem;" readonly>'+escapeHtml(methodology)+'</textarea>';
+
+    body += '<div class="result-actions">'+
+      '<button type="button" class="btn btn-primary" id="ss-copy-result"><svg><use href="#i-check"/></svg>Copiar resultado</button>'+
+      '<button type="button" class="btn btn-ghost" id="ss-copy-method"><svg><use href="#i-check"/></svg>Copiar metodología</button>'+
+      '<button type="button" class="btn btn-ghost" id="ss-download"><svg><use href="#i-file"/></svg>Descargar resumen</button>'+
+      '<button type="button" class="btn btn-ghost" id="ss-modify">Modificar datos</button>'+
+      '<button type="button" class="btn btn-ghost" id="ss-new">Nuevo cálculo</button>'+
+      '</div>';
+
+    // sensibilidad
+    var sens = ssMode==="priori" ? ssSensitivityData(res) : null;
+    if(sens){
+      body += '<div class="xcard" data-open="'+ssSensOpen+'" style="margin-top:1.4rem;">'+
+        '<button type="button" class="xcard-head" id="ss-toggle-sens"><div class="xcard-top"><h3>¿Qué ocurre si cambia el efecto esperado?</h3><svg><use href="#i-chevron"/></svg></div></button>'+
+        '<div class="xcard-body">'+
+          '<p class="q-help">El análisis de sensibilidad permite comprobar cuánto depende la muestra de los supuestos introducidos.</p>'+
+          '<div class="ss-table-wrap"><table class="ss-table"><thead><tr><th>Escenario</th><th>n para 80 % de potencia</th><th>n para 90 % de potencia</th></tr></thead><tbody>'+
+          sens.rows.map(function(r){ return '<tr><td>'+r.label+'</td><td>'+(r.n80?ssFmt(r.n80,0):"—")+'</td><td>'+(r.n90?ssFmt(r.n90,0):"—")+'</td></tr>'; }).join("")+
+          '</tbody></table></div>'+
+          ssSvgSensitivityChart(sens)+
+        '</div></div>';
+    }
+
+    // código R
+    var rcode = ssBuildRCode(res);
+    body += '<div class="xcard" data-open="'+ssRcodeOpen+'" style="margin-top:1rem;">'+
+      '<button type="button" class="xcard-head" id="ss-toggle-rcode"><div class="xcard-top"><h3>Código del cálculo en R</h3><svg><use href="#i-chevron"/></svg></div></button>'+
+      '<div class="xcard-body">'+
+        '<div class="formula-box" id="ss-rcode-block" style="font-size:.82rem; white-space:pre;">'+escapeHtml(rcode)+'</div>'+
+        '<button type="button" class="text-btn rcode-copy" data-copy-id="ss-rcode-block"><svg><use href="#i-check"/></svg>Copiar</button>'+
+      '</div></div>';
+
+    body += '</div>';
+    return body + ssFooterHtml(true, false);
+  }
+
+  function ssWireStep7(){
+    var toggleSens = document.getElementById("ss-toggle-sens");
+    if(toggleSens) toggleSens.addEventListener("click", function(){ ssSensOpen = !ssSensOpen; renderSSize(); });
+    var toggleRcode = document.getElementById("ss-toggle-rcode");
+    if(toggleRcode) toggleRcode.addEventListener("click", function(){ ssRcodeOpen = !ssRcodeOpen; renderSSize(); });
+    var modifyBtn = document.getElementById("ss-modify");
+    if(modifyBtn) modifyBtn.addEventListener("click", function(){ ssStep = 1; renderSSize(); ssShell.scrollIntoView({behavior:"smooth", block:"start"}); });
+    var newBtn = document.getElementById("ss-new");
+    if(newBtn) newBtn.addEventListener("click", ssRestart);
+    var copyResultBtn = document.getElementById("ss-copy-result");
+    if(copyResultBtn) copyResultBtn.addEventListener("click", function(){ ssCopyText(ssBuildResultText(ssLastResult), copyResultBtn); });
+    var copyMethodBtn = document.getElementById("ss-copy-method");
+    if(copyMethodBtn) copyMethodBtn.addEventListener("click", function(){ ssCopyText(ssBuildMethodologyText(ssLastResult), copyMethodBtn); });
+    var downloadBtn = document.getElementById("ss-download");
+    if(downloadBtn) downloadBtn.addEventListener("click", function(){
+      var res = ssLastResult;
+      var txt = "RESUMEN — CÁLCULO DE TAMAÑO MUESTRAL\n\n" + ssBuildResultText(res) + "\n\n" + ssBuildInterpretation(res) + "\n\nMETODOLOGÍA\n" + ssBuildMethodologyText(res) + "\n\nCÓDIGO R\n" + ssBuildRCode(res);
+      var blob = new Blob([txt], {type:"text/plain;charset=utf-8"});
+      var url = URL.createObjectURL(blob);
+      var link = document.createElement("a");
+      link.href = url; link.download = "tamano-muestral.txt";
+      document.body.appendChild(link); link.click(); document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    });
+  }
+  function ssCopyText(text, btn){
+    try{
+      if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(text); }
+      else {
+        var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand("copy"); document.body.removeChild(ta);
+      }
+      var original = btn.innerHTML;
+      btn.innerHTML = '<svg><use href="#i-check"/></svg>Copiado';
+      setTimeout(function(){ btn.innerHTML = original; }, 1800);
+    } catch(e){}
+  }
+
+
   /* ============================================================
      15. INICIO
   ============================================================ */
@@ -2452,6 +3716,7 @@
   renderChartFilters();
   renderCharts();
   renderAuditor();
+  renderSSize();
 
 })();
 </script>
