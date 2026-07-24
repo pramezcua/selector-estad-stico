@@ -397,6 +397,10 @@
       <div class="card-grid" id="diag-grid"></div>
     </div>
     <div id="dict-section-d" hidden><div class="card-grid" id="transform-grid"></div></div>
+    <div id="dict-section-e" hidden>
+      <p class="q-help" style="margin-bottom:1.2rem;">Cuatro formas de corregir por comparaciones múltiples, según tu objetivo — no hay una que sea siempre mejor que las demás.</p>
+      <div class="card-grid" id="posthoc-grid"></div>
+    </div>
   </section>
 
   <section id="panel-charts" class="tabpanel" role="tabpanel" hidden>
@@ -1102,6 +1106,7 @@
         '<p style="font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:.3rem;">Código R — gráfico de comparaciones e IC</p>'+
         '<div class="formula-box" id="'+uid+'-codeplot" style="font-size:.8rem; white-space:pre;">'+escapeHtml(m.rcode_grafico)+'</div>'+
         '<button type="button" class="text-btn rcode-copy" data-copy-id="'+uid+'-codeplot"><svg><use href="#i-check"/></svg>Copiar</button>'+
+        '<div style="margin-top:.7rem;"><button type="button" class="text-btn" data-goto-posthoc-key="'+selected+'" style="color:var(--cat-regresion);">Ver esta ficha en el Diccionario<svg><use href="#i-arrow"/></svg></button></div>'+
       '</div>';
     }
     return '<div class="req-block"><span class="req-title">¿Qué comparaciones quieres realizar?</span>'+
@@ -1817,7 +1822,8 @@
   }
   function multiplicityBlockHtml(test){
     if(!test.multiplicity) return "";
-    return '<div class="multi-box"><span class="alt-label">Comparaciones múltiples</span><p>'+escapeHtml(test.multiplicity)+'</p></div>';
+    return '<div class="multi-box"><span class="alt-label">Comparaciones múltiples</span><p>'+escapeHtml(test.multiplicity)+'</p>'+
+      '<button type="button" class="text-btn" data-goto-posthoc="1" style="color:var(--cat-regresion); margin-top:.3rem;">Ver Tukey / Holm-Bonferroni / Dunnett / Games-Howell en el Diccionario<svg><use href="#i-arrow"/></svg></button></div>';
   }
   function badgeRowHtml(test){
     var html = badge(test.category, test.paradigm);
@@ -1931,7 +1937,8 @@
   ============================================================ */
   var DICT_SECTIONS = [
     {id:"a", label:"Modelos y Herramientas"}, {id:"b", label:"Tipos de Variable"},
-    {id:"c", label:"Diagnóstico y Correcciones"}, {id:"d", label:"Transformaciones"}
+    {id:"c", label:"Diagnóstico y Correcciones"}, {id:"d", label:"Transformaciones"},
+    {id:"e", label:"Post-hoc y Correcciones"}
   ];
   var dictSection = "a";
   function renderDictSubnav(){
@@ -1944,10 +1951,11 @@
   }
   function switchDictSection(id){
     dictSection = id;
-    ["a","b","c","d"].forEach(function(s){ document.getElementById("dict-section-"+s).hidden = (s!==id); });
+    ["a","b","c","d","e"].forEach(function(s){ document.getElementById("dict-section-"+s).hidden = (s!==id); });
     renderDictSubnav();
     if(id==="b" && !document.getElementById("dict-section-b").dataset.built){ renderVarTypesSection(); document.getElementById("dict-section-b").dataset.built="1"; }
     if(id==="d" && !document.getElementById("dict-section-d").dataset.built){ renderTransforms(); document.getElementById("dict-section-d").dataset.built="1"; }
+    if(id==="e"){ renderPostHocSection(); }
   }
 
   /* ---- Sección A: Modelos y Herramientas ---- */
@@ -2083,6 +2091,48 @@
       return '<div class="transform-card"><h3>'+t.name+'</h3><div class="formula-box">'+t.formula+'</div>'+
         '<p class="use"><b>Uso principal: </b>'+t.uso+'</p></div>';
     }).join("");
+  }
+
+  /* ---- Sección E: Post-hoc y Correcciones ---- */
+  var posthocCardOpen = {};
+  var POSTHOC_ORDER = ["tukey","holm_bonferroni","dunnett","games_howell"];
+  function renderPostHocSection(){
+    var el = document.getElementById("posthoc-grid");
+    el.innerHTML = POSTHOC_ORDER.map(function(key){
+      var m = POSTHOC[key];
+      var open = !!posthocCardOpen[key];
+      return '<article id="posthoc-'+key+'" class="xcard" data-open="'+open+'">'+
+        '<button type="button" class="xcard-head" data-id="'+key+'">'+
+          '<div class="xcard-top"><h3>'+escapeHtml(m.name)+'</h3><svg><use href="#i-chevron"/></svg></div>'+
+          '<div class="badges-sm">'+badge("parametrica", m.scenario)+'</div>'+
+          '<p class="xcard-def">'+escapeHtml(m.explicacion)+'</p>'+
+        '</button>'+
+        '<div class="xcard-body">'+
+          '<h4>Cuándo usarlo</h4><p>'+escapeHtml(m.cuando)+'</p>'+
+          '<h4>Supuestos</h4><ul class="assump-list">'+m.supuestos.map(function(s){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(s)+'</span></li>';}).join("")+'</ul>'+
+          '<h4>Interpretación</h4><p>'+escapeHtml(m.interpretacion)+'</p>'+
+          '<h4>Código R — comparaciones</h4><div class="formula-box" id="posthoc-code-'+key+'" style="font-size:.82rem; white-space:pre;">'+escapeHtml(m.rcode)+'</div>'+
+          '<button type="button" class="text-btn rcode-copy" data-copy-id="posthoc-code-'+key+'"><svg><use href="#i-check"/></svg>Copiar</button>'+
+          '<h4>Código R — gráfico de comparaciones e IC</h4><div class="formula-box" id="posthoc-plot-'+key+'" style="font-size:.82rem; white-space:pre;">'+escapeHtml(m.rcode_grafico)+'</div>'+
+          '<button type="button" class="text-btn rcode-copy" data-copy-id="posthoc-plot-'+key+'"><svg><use href="#i-check"/></svg>Copiar</button>'+
+        '</div></article>';
+    }).join("");
+  }
+  document.getElementById("posthoc-grid").addEventListener("click", function(e){
+    var head = e.target.closest(".xcard-head");
+    if(head){ var id=head.getAttribute("data-id"); posthocCardOpen[id]=!posthocCardOpen[id]; renderPostHocSection(); }
+  });
+  function goToPostHoc(key){
+    switchTab("dict"); switchDictSection("e");
+    Object.keys(posthocCardOpen).forEach(function(k){ posthocCardOpen[k]=false; });
+    if(key){ posthocCardOpen[key] = true; }
+    renderPostHocSection();
+    var card = key ? document.getElementById("posthoc-"+key) : null;
+    if(card){
+      card.scrollIntoView({behavior:"smooth", block:"center"});
+      card.classList.add("highlight");
+      setTimeout(function(){ card.classList.remove("highlight"); }, 2200);
+    }
   }
 
   /* ============================================================
@@ -2451,6 +2501,10 @@
       else if(e.target.closest("#dict-grid")){ renderDictionary(); }
       return;
     }
+    var gotoPh = e.target.closest("[data-goto-posthoc]");
+    if(gotoPh){ goToPostHoc(null); return; }
+    var gotoPhKey = e.target.closest("[data-goto-posthoc-key]");
+    if(gotoPhKey){ goToPostHoc(gotoPhKey.getAttribute("data-goto-posthoc-key")); return; }
   });
 
   /* ============================================================
