@@ -151,6 +151,11 @@
   .multi-box{ background:var(--cat-regresion-soft); border:1px solid var(--border); border-radius:var(--radius); padding:.9rem 1rem; margin-bottom:1.2rem; }
   .multi-box .alt-label{ font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; color:var(--cat-regresion); font-family:var(--font-mono); display:block; margin-bottom:.3rem; }
   .multi-box p{ font-size:.88rem; line-height:1.55; color:var(--text); }
+  .rcode-tabnav{ display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.7rem; }
+  .rcode-tab-btn{ border:1.5px solid var(--border); background:var(--surface); color:var(--text-muted); padding:.35rem .75rem; border-radius:999px; font-size:.76rem; font-weight:700; cursor:pointer; }
+  .rcode-tab-btn[aria-selected="true"]{ background:var(--accent); border-color:var(--accent); color:#fff; }
+  .rcode-tabpanel .text-btn{ margin-top:.4rem; }
+  .posthoc-chip{ text-align:left; }
   .req-block{ margin-top:1.2rem; }
   .req-block .req-title{ font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); display:block; margin-bottom:.6rem; }
 
@@ -497,12 +502,12 @@
       related:{id:"wilcoxon_pareada", label:"Alternativa no paramétrica"} },
 
     { id:"ancova", name:"ANCOVA (Análisis de Covarianza)", category:"parametrica", paradigm:"Paramétrica",
-      def:"Modelo que compara un resultado posterior entre dos o más grupos ajustando por el valor basal (y otras covariables relevantes), en lugar de comparar el cambio bruto o los resultados de pruebas pareadas realizadas por separado dentro de cada grupo. En diseños pre-post con una única medición posterior, es la opción recomendada: aumenta la precisión estadística al eliminar la variabilidad explicada por el punto de partida de cada sujeto, y evita la falacia de comparar «un grupo mejoró de forma significativa y el otro no» como si eso demostrara una diferencia entre grupos.",
-      uses:["Comparar la reducción de la presión arterial entre un grupo de tratamiento y un grupo control, ajustando por el valor basal de cada paciente.","Comparar dos o más grupos en un resultado posterior a una intervención, controlando además por covariables como edad o centro."],
+      def:"ANCOVA permite comparar la media de una variable entre dos o más grupos ajustando el análisis por una o más covariables. No «elimina» la influencia de esas variables ni la confusión que puedan generar: la ajusta estadísticamente, comparando los grupos como si todos partieran del mismo valor de la covariable. Distingue cuatro papeles distintos en el modelo: la variable dependiente (continua, el resultado que mides), la variable principal de agrupación o tratamiento (lo que quieres comparar), las covariables continuas (edad, IMC, valor basal…) y, opcionalmente, factores categóricos adicionales (sexo, centro…). En diseños pre-post con una única medición posterior, se recomienda generalmente analizar el valor final ajustándolo por el valor basal, en vez de comparar el cambio bruto o los resultados de pruebas pareadas por separado dentro de cada grupo.",
+      uses:["Comparar la reducción de la presión arterial entre un grupo de tratamiento y un grupo control, ajustando por el valor basal de cada paciente.","Comparar dos o más grupos en un resultado posterior a una intervención, controlando además por covariables como edad, IMC o centro."],
       formula:"Y<sub>post</sub> = β₀ + β₁·grupo + β₂·Y<sub>basal</sub> + β₃·covariables + ε",
       formulaNote:"β₁: efecto ajustado del grupo sobre el resultado posterior, controlando por el valor basal y las covariables incluidas.",
-      assumptions:["Variable dependiente (resultado posterior) cuantitativa.","Dos o más grupos, cada uno con una medición basal y una medición posterior por sujeto.","Relación lineal entre el valor basal (y otras covariables) y el resultado posterior.","Homogeneidad de las pendientes de regresión entre grupos —el efecto del valor basal es similar en todos los grupos— antes de interpretar el efecto principal del grupo.","Normalidad y homocedasticidad de los residuos del modelo.","Independencia de las observaciones."],
-      effect:{name:"Diferencia de medias ajustada (least-squares means) con IC 95%, y η²ₚ del efecto grupo", note:"La diferencia ajustada por el valor basal es más precisa e interpretable que la diferencia del cambio bruto entre grupos."},
+      assumptions:["Variable dependiente cuantitativa.","Dos o más grupos (variable principal de agrupación/tratamiento), con las covariables medidas en cada sujeto.","Linealidad entre cada covariable continua y el resultado.","Normalidad aproximada de los residuos del modelo.","Homogeneidad de varianzas (homocedasticidad) entre grupos.","Independencia de las observaciones.","Homogeneidad de las pendientes de regresión: la relación entre la covariable y el resultado debe ser similar en todos los grupos — compruébalo con la interacción grupo × covariable antes de interpretar el efecto principal del grupo."],
+      effect:{name:"Diferencia de medias ajustada (least-squares means) con IC 95%, y η²ₚ del efecto grupo", note:"La diferencia ajustada por la covariable es una comparación estadísticamente ajustada, más precisa que la diferencia del cambio bruto entre grupos."},
       related:{id:"anova_mixto", label:"Si hay más de una medición posterior (estructura longitudinal)"} },
 
     { id:"mann_whitney", name:"U de Mann-Whitney", category:"no_parametrica", paradigm:"No paramétrica",
@@ -650,11 +655,11 @@
       def:"Prueba que evalúa si existe asociación estadística entre dos variables categóricas, comparando las frecuencias observadas con las frecuencias esperadas bajo el supuesto de independencia.",
       uses:["Evaluar si existe asociación entre el sexo y la presencia o ausencia de una enfermedad.","Analizar si la respuesta a un tratamiento (sí/no) está asociada al grupo experimental."],
       formula:"χ² = Σᵢ "+frac("(Oᵢ − Eᵢ)²","Eᵢ"),
-      formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia",
-      assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Frecuencias esperadas ≥ 5 en al menos el 80% de las celdas.","Si no se cumple, usar el test exacto de Fisher."],
+      formulaNote:"Oᵢ: frecuencia observada en la celda i · Eᵢ: frecuencia esperada bajo independencia (Eᵢ = total_fila × total_columna / n). El valor de 5 se refiere a la frecuencia esperada dentro de cada celda de la tabla, no al tamaño total de la muestra.",
+      assumptions:["Ambas variables categóricas (nominales u ordinales).","Observaciones independientes.","Ninguna frecuencia esperada debería ser inferior a 1.","No más del 20% de las celdas deberían tener frecuencias esperadas inferiores a 5.","En tablas 2×2 con frecuencias esperadas pequeñas, usa el test exacto de Fisher en su lugar."],
       effect:{name:"V de Cramér, u odds ratio/riesgo relativo si la tabla es 2×2", note:"En tablas 2×2, el odds ratio o el riesgo relativo con IC 95% son más informativos e interpretables que V de Cramér."},
       multiplicity:"Si repites esta prueba sobre varias variables o subgrupos (ej. varios síntomas frente al mismo desenlace), corrige con Holm-Bonferroni o FDR antes de decidir qué asociaciones son significativas — especialmente en análisis exploratorios.",
-      related:{id:"fisher", label:"Alternativa exacta con frecuencias esperadas pequeñas"} },
+      related:{id:"fisher", label:"Alternativa al chi-cuadrado cuando la muestra es pequeña o existen celdas con frecuencias esperadas inferiores a 5"} },
 
     { id:"fisher", name:"Test exacto de Fisher", category:"asociacion", paradigm:"No paramétrica",
       def:"Prueba exacta que evalúa la asociación entre dos variables categóricas, habitualmente en una tabla 2×2, calculando la probabilidad exacta de la tabla observada y de tablas igual de extremas o más, sin depender de la aproximación asintótica que usa Chi-cuadrado. Es la alternativa recomendada cuando las frecuencias esperadas son pequeñas o el tamaño muestral es reducido.",
@@ -850,17 +855,38 @@
      Nombres genéricos: resultado, grupo, valor_basal, tiempo, id, centro, evento, tiempo_evento
   ============================================================ */
   var RCODE = {
-    t_una: '# t de Student de una muestra\nlibrary(effectsize)\nt.test(datos$resultado, mu = valor_referencia)\ncohens_d(datos$resultado, mu = valor_referencia)\nshapiro.test(datos$resultado)\nhist(datos$resultado); abline(v = valor_referencia, col = "red")',
-    t_welch: '# t de Welch (por defecto: no exige varianzas iguales)\nlibrary(effectsize)\nt.test(resultado ~ grupo, data = datos)       # var.equal = FALSE por defecto\nhedges_g(resultado ~ grupo, data = datos)\nboxplot(resultado ~ grupo, data = datos)',
-    t_independiente: '# t de Student, varianzas combinadas (solo si estan confirmadas como similares)\nlibrary(car); library(effectsize)\nleveneTest(resultado ~ grupo, data = datos)\nt.test(resultado ~ grupo, data = datos, var.equal = TRUE)\ncohens_d(resultado ~ grupo, data = datos)',
-    t_pareada: '# t de Student para muestras pareadas\nlibrary(effectsize)\nt.test(datos$resultado_post, datos$resultado_pre, paired = TRUE)\ndif <- datos$resultado_post - datos$resultado_pre\nshapiro.test(dif)\nrepeated_measures_d(resultado ~ tiempo | id, data = datos_largo)',
-    ancova: '# ANCOVA: resultado_post ~ grupo + valor_basal\nlibrary(car); library(emmeans); library(effectsize)\nmodelo <- lm(resultado_post ~ grupo + valor_basal, data = datos)\nAnova(modelo, type = 3)\nanova(lm(resultado_post ~ grupo * valor_basal, data = datos))  # homogeneidad de pendientes\nemmeans(modelo, pairwise ~ grupo)      # medias ajustadas + IC 95%\neta_squared(modelo, partial = TRUE)\npar(mfrow = c(2,2)); plot(modelo)',
-    mann_whitney: '# U de Mann-Whitney\nlibrary(effectsize)\nwilcox.test(resultado ~ grupo, data = datos, conf.int = TRUE)\nrank_biserial(resultado ~ grupo, data = datos)\nboxplot(resultado ~ grupo, data = datos)',
+    t_una: { analisis:'# t de Student de una muestra\nlibrary(effectsize)\nt.test(datos$resultado, mu = valor_referencia)\ncohens_d(datos$resultado, mu = valor_referencia)',
+      supuestos:'shapiro.test(datos$resultado)\nhist(datos$resultado, breaks = "FD")\nqqnorm(datos$resultado); qqline(datos$resultado, col = "red")',
+      graficos:'library(ggplot2)\nggplot(datos, aes(x = "", y = resultado)) +\n  geom_jitter(width = .08, alpha = .5) +\n  geom_boxplot(width = .3, alpha = .3, outlier.shape = NA) +\n  geom_hline(yintercept = valor_referencia, linetype = "dashed", color = "red") +\n  labs(x = NULL, y = "resultado") + theme_minimal()',
+      interpretacion:"Un IC 95% de la diferencia que no incluye el valor de referencia respalda la hipótesis alternativa. Un resultado no significativo no demuestra que la media sea igual al valor de referencia: solo indica que no hay evidencia suficiente para descartar la igualdad — revisa la potencia y el tamaño del efecto (d de Cohen) antes de concluir ausencia de diferencia." },
+    t_welch: { analisis:'# t de Welch (por defecto: no exige varianzas iguales)\nlibrary(effectsize)\nt.test(resultado ~ grupo, data = datos)       # var.equal = FALSE por defecto\nhedges_g(resultado ~ grupo, data = datos)',
+      supuestos:'library(car)\nleveneTest(resultado ~ grupo, data = datos)     # informativo, no obligatorio para Welch\ntapply(datos$resultado, datos$grupo, function(x) shapiro.test(x)$p.value)',
+      graficos:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_violin(alpha = .3) +\n  geom_jitter(width = .1, alpha = .5) +\n  stat_summary(fun.data = mean_cl_normal, geom = "pointrange", color = "red") +\n  theme_minimal()',
+      interpretacion:"La diferencia de medias con su IC 95% cuantifica la magnitud del efecto; Hedges g lo estandariza para comparar con otros estudios. Un p-valor no significativo no equivale a «no hay efecto» — mira si el IC es ancho (poca precisión) o realmente estrecho alrededor de 0." },
+    t_independiente: { analisis:'# t de Student, varianzas combinadas (solo si estan confirmadas como similares)\nlibrary(effectsize)\nt.test(resultado ~ grupo, data = datos, var.equal = TRUE)\ncohens_d(resultado ~ grupo, data = datos)',
+      supuestos:'library(car)\nleveneTest(resultado ~ grupo, data = datos)     # homogeneidad de varianzas\ntapply(datos$resultado, datos$grupo, function(x) shapiro.test(x)$p.value)',
+      graficos:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_boxplot(outlier.shape = NA) +\n  geom_jitter(width = .1, alpha = .5) +\n  theme_minimal()',
+      interpretacion:"Válida únicamente si las varianzas son homogéneas (Levene no significativo); en caso contrario, usa la t de Welch. Un p-valor no significativo no demuestra que las medias sean iguales." },
+    t_pareada: { analisis:'# t de Student para muestras pareadas\nlibrary(effectsize)\nt.test(datos$resultado_post, datos$resultado_pre, paired = TRUE)\nrepeated_measures_d(resultado ~ tiempo | id, data = datos_largo)',
+      supuestos:'dif <- datos$resultado_post - datos$resultado_pre\nshapiro.test(dif)\nhist(dif, breaks = "FD")\nqqnorm(dif); qqline(dif, col = "red")',
+      graficos:'library(ggplot2); library(tidyr)\ndatos_largo <- pivot_longer(datos, cols = c(resultado_pre, resultado_post), names_to = "momento", values_to = "resultado")\nggplot(datos_largo, aes(momento, resultado, group = id)) +\n  geom_line(alpha = .3) + geom_point(alpha = .5) +\n  stat_summary(aes(group = 1), fun = mean, geom = "line", color = "red", linewidth = 1) +\n  theme_minimal()',
+      interpretacion:"La diferencia media (post−pre) con su IC 95% indica dirección y magnitud del cambio. Un p-valor no significativo no prueba ausencia de cambio: puede reflejar poca potencia con muestras pequeñas." },
+    ancova: { analisis:'# ANCOVA: resultado_post ~ grupo + valor_basal\nlibrary(car); library(emmeans); library(effectsize)\nmodelo <- lm(resultado_post ~ grupo + valor_basal, data = datos)\nAnova(modelo, type = 3)\neta_squared(modelo, partial = TRUE)\nemmeans(modelo, pairwise ~ grupo)      # medias ajustadas + IC 95%, comparacion ajustada',
+      supuestos:'# Homogeneidad de pendientes (interaccion grupo x covariable, NO deberia ser significativa):\nanova(lm(resultado_post ~ grupo * valor_basal, data = datos))\n# Linealidad, normalidad y homocedasticidad de los residuos:\npar(mfrow = c(2,2)); plot(modelo)\nshapiro.test(residuals(modelo))\nlibrary(car); leveneTest(residuals(modelo) ~ grupo, data = datos)   # independencia: revisar diseno de recogida de datos',
+      graficos:'library(ggplot2); library(emmeans)\nggplot(datos, aes(valor_basal, resultado_post, color = grupo)) +\n  geom_point(alpha = .5) +\n  geom_smooth(method = "lm", se = TRUE) +\n  theme_minimal()\nplot(emmeans(modelo, ~ grupo)) + ggplot2::theme_minimal()   # medias ajustadas + IC 95%',
+      interpretacion:"El efecto del grupo (β₁) ya está ajustado por el valor basal: interpreta la diferencia de medias ajustadas (emmeans), no las medias brutas. Si la interacción grupo × covariable es significativa, las pendientes difieren entre grupos y el efecto del grupo no es constante — repórtalo por separado en vez de un único ajuste global." },
+    mann_whitney: { analisis:'# U de Mann-Whitney\nlibrary(effectsize)\nwilcox.test(resultado ~ grupo, data = datos, conf.int = TRUE)\nrank_biserial(resultado ~ grupo, data = datos)',
+      supuestos:'# No requiere normalidad; comprueba formas comparables entre grupos:\nlibrary(ggplot2)\nggplot(datos, aes(resultado, fill = grupo)) + geom_density(alpha = .4) + theme_minimal()',
+      graficos:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_violin(alpha = .3) +\n  geom_jitter(width = .1, alpha = .5) +\n  theme_minimal()',
+      interpretacion:"Interpreta el resultado como una diferencia de rangos/distribuciones. Solo redáctalo como diferencia de medianas si las formas de ambas distribuciones son visualmente comparables (gráfico de densidad)." },
     wilcoxon_una: '# Wilcoxon de una muestra\nwilcox.test(datos$resultado, mu = valor_referencia, conf.int = TRUE)',
     wilcoxon_pareada: '# Wilcoxon de rangos con signo (pareada)\nwilcox.test(datos$resultado_post, datos$resultado_pre, paired = TRUE, conf.int = TRUE)',
     anova_1f: '# ANOVA de un factor\nlibrary(car); library(effectsize)\nmodelo <- aov(resultado ~ grupo, data = datos)\nleveneTest(resultado ~ grupo, data = datos)\nsummary(modelo)\neta_squared(modelo, partial = TRUE)\nTukeyHSD(modelo)          # post-hoc con correccion\nplot(modelo, which = 2)   # Q-Q de residuos',
     anova_rm: '# ANOVA de medidas repetidas\nlibrary(afex); library(emmeans)\nmodelo <- aov_ez(id = "id", dv = "resultado", within = "tiempo", data = datos_largo)\nmodelo   # incluye correccion de Greenhouse-Geisser si falla esfericidad\nemmeans(modelo, pairwise ~ tiempo)',
-    kruskal_wallis: '# Kruskal-Wallis\nlibrary(rstatix)\nkruskal.test(resultado ~ grupo, data = datos)\nkruskal_effsize(datos, resultado ~ grupo)\ndunn_test(datos, resultado ~ grupo, p.adjust.method = "holm")   # post-hoc\nboxplot(resultado ~ grupo, data = datos)',
+    kruskal_wallis: { analisis:'# Kruskal-Wallis\nlibrary(rstatix)\nkruskal.test(resultado ~ grupo, data = datos)\nkruskal_effsize(datos, resultado ~ grupo)',
+      supuestos:'# No requiere normalidad; comprueba formas comparables entre grupos:\nlibrary(ggplot2)\nggplot(datos, aes(resultado, fill = grupo)) + geom_density(alpha = .4) + theme_minimal()',
+      graficos:'library(rstatix); library(ggpubr)\npost <- dunn_test(datos, resultado ~ grupo, p.adjust.method = "holm")\nggboxplot(datos, x = "grupo", y = "resultado", add = "jitter") +\n  stat_pvalue_manual(post, label = "p.adj.signif")',
+      interpretacion:"Si el resultado global es significativo, usa el post-hoc de Dunn (con corrección) para saber qué pares difieren — el test global no lo indica por sí solo." },
     friedman: '# Friedman\nfriedman.test(resultado ~ tiempo | id, data = datos_largo)\nlibrary(rstatix)\nfriedman_effsize(datos_largo, resultado ~ tiempo | id)',
     dunnett: '# Test de Dunnett (grupo con "control" como nivel de referencia)\nlibrary(multcomp)\nmodelo <- aov(resultado ~ grupo, data = datos)\nsummary(glht(modelo, linfct = mcp(grupo = "Dunnett")))',
     anova_2f: '# ANOVA de dos vias\nlibrary(car); library(effectsize); library(emmeans)\nmodelo <- aov(resultado ~ factor1 * factor2, data = datos)\nAnova(modelo, type = 3)\neta_squared(modelo, partial = TRUE)\nemmeans(modelo, pairwise ~ factor1 | factor2)\ninteraction.plot(datos$factor1, datos$factor2, datos$resultado)',
@@ -870,22 +896,49 @@
     gee_binario: '# GEE para resultado binario\nlibrary(geepack)\nmodelo <- geeglm(resultado ~ tiempo * grupo, id = id, data = datos_largo,\n                  family = binomial, corstr = "exchangeable")\nsummary(modelo)\nexp(coef(modelo))   # OR promedio poblacional',
     glmm_logistico: '# Modelo logistico mixto\nlibrary(lme4)\nmodelo <- glmer(resultado ~ tiempo * grupo + (1 | id), data = datos_largo, family = binomial)\nsummary(modelo)\nexp(fixef(modelo))   # OR especifico de sujeto',
     glmm_conteo: '# Modelo de conteo mixto\nlibrary(lme4); library(glmmTMB)\nmodelo <- glmer(resultado ~ tiempo + (1 | id), data = datos_largo, family = poisson)\n# si persiste sobredispersion tras los efectos aleatorios:\nmodelo_nb <- glmmTMB(resultado ~ tiempo + (1 | id), data = datos_largo, family = nbinom2)\nsummary(modelo)',
-    chi2: '# Chi-cuadrado de independencia\nlibrary(rstatix)\ntabla <- table(datos$var1, datos$var2)\nchisq.test(tabla)\ncramer_v(tabla)\nbarplot(tabla, beside = TRUE, legend = TRUE)',
-    fisher: '# Test exacto de Fisher\ntabla <- table(datos$var1, datos$var2)\nfisher.test(tabla)',
+    chi2: { analisis:'# Chi-cuadrado de independencia\nlibrary(rstatix)\ntabla <- table(datos$var1, datos$var2)\nchisq.test(tabla)\ncramer_v(tabla)',
+      supuestos:'# Frecuencias esperadas POR CELDA (no el tamaño muestral total):\nchisq.test(tabla)$expected\nmean(chisq.test(tabla)$expected < 5) * 100   # % de celdas con esperada <5 (regla: no deberia superar el 20%)\nmin(chisq.test(tabla)$expected)               # ninguna celda deberia bajar de 1',
+      graficos:'library(ggplot2)\ndf <- as.data.frame(tabla)\nggplot(df, aes(Var1, Freq, fill = Var2)) + geom_col(position = "dodge") + theme_minimal()   # frecuencias\nggplot(df, aes(Var1, Freq, fill = Var2)) + geom_col(position = "fill") + theme_minimal()     # proporciones (barras apiladas)\nmosaicplot(tabla, color = TRUE, main = NULL)                                                 # grafico mosaico',
+      interpretacion:"V de Cramér cuantifica la fuerza de la asociación (no su dirección); en tablas 2×2, prefiere el odds ratio o riesgo relativo con IC 95%, más interpretables clínicamente." },
+    fisher: { analisis:'# Test exacto de Fisher\ntabla <- table(datos$var1, datos$var2)\nfisher.test(tabla)',
+      supuestos:'# Frecuencias observadas y esperadas por celda:\ntabla\nchisq.test(tabla)$expected   # solo para consultar las esperadas; el p-valor de Fisher no depende de ellas',
+      graficos:'library(ggplot2)\ndf <- as.data.frame(tabla)\nggplot(df, aes(Var1, Freq, fill = Var2)) + geom_col(position = "fill") + theme_minimal()   # proporciones\nmosaicplot(tabla, color = TRUE, main = NULL)',
+      interpretacion:"fisher.test() en tablas 2×2 devuelve directamente el odds ratio estimado y su IC 95% exacto — repórtalo junto al p-valor exacto, no solo este último." },
     mcnemar: '# Test de McNemar\ntabla <- table(datos$antes, datos$despues)\nmcnemar.test(tabla, correct = TRUE)',
     cochran_q: '# Q de Cochran\nlibrary(RVAideMemoire)\ncochran.qtest(resultado ~ tiempo | id, data = datos_largo)',
-    pearson: '# Correlacion de Pearson\ncor.test(datos$var1, datos$var2, method = "pearson")\nplot(datos$var1, datos$var2)\nabline(lm(var2 ~ var1, data = datos), col = "red")',
-    spearman: '# Correlacion de Spearman\ncor.test(datos$var1, datos$var2, method = "spearman")',
-    reg_lineal_simple: '# Regresion lineal simple\nmodelo <- lm(resultado ~ predictor, data = datos)\nsummary(modelo)\nconfint(modelo)\npar(mfrow = c(2,2)); plot(modelo)',
-    reg_lineal_multiple: '# Regresion lineal multiple\nlibrary(car)\nmodelo <- lm(resultado ~ predictor1 + predictor2, data = datos)\nsummary(modelo)\nvif(modelo)\nconfint(modelo)\nplot(modelo, which = 1)',
-    reg_logistica: '# Regresion logistica\nmodelo <- glm(resultado ~ predictor1 + predictor2, data = datos, family = binomial)\nsummary(modelo)\nexp(cbind(OR = coef(modelo), confint(modelo)))',
+    pearson: { analisis:'# Correlacion de Pearson\ncor.test(datos$var1, datos$var2, method = "pearson")',
+      supuestos:'shapiro.test(datos$var1); shapiro.test(datos$var2)\nlibrary(ggplot2)\nggplot(datos, aes(var1, var2)) + geom_point() + geom_smooth(method = "loess", se = FALSE)   # comprobar linealidad',
+      graficos:'library(ggplot2)\nggplot(datos, aes(var1, var2)) +\n  geom_point(alpha = .6) +\n  geom_smooth(method = "lm", se = TRUE) +   # recta ajustada + IC 95%\n  theme_minimal()',
+      interpretacion:"r cuantifica solo la relación lineal; revisa siempre el diagrama de dispersión — una r baja no descarta una relación no lineal fuerte." },
+    spearman: { analisis:'# Correlacion de Spearman\ncor.test(datos$var1, datos$var2, method = "spearman")',
+      supuestos:'# No requiere normalidad; comprueba monotonicidad (no necesariamente lineal):\nlibrary(ggplot2)\nggplot(datos, aes(var1, var2)) + geom_point() + geom_smooth(method = "loess", se = FALSE)',
+      graficos:'library(ggplot2)\nggplot(datos, aes(rank(var1), rank(var2))) +\n  geom_point(alpha = .6) + geom_smooth(method = "lm", se = TRUE) +\n  labs(x = "rango(var1)", y = "rango(var2)") + theme_minimal()',
+      interpretacion:"ρ cuantifica la fuerza de una relación monótona, no necesariamente lineal — no la compares directamente con una r de Pearson calculada sobre los mismos datos sin tener esto en cuenta." },
+    reg_lineal_simple: { analisis:'# Regresion lineal simple\nmodelo <- lm(resultado ~ predictor, data = datos)\nsummary(modelo)\nconfint(modelo)',
+      supuestos:'par(mfrow = c(2,2)); plot(modelo)     # linealidad, homocedasticidad, Q-Q, influyentes\nshapiro.test(residuals(modelo))',
+      graficos:'library(ggplot2)\nggplot(datos, aes(predictor, resultado)) +\n  geom_point(alpha = .6) +\n  geom_smooth(method = "lm", se = TRUE) +\n  theme_minimal()\nggplot(data.frame(ajustados = fitted(modelo), residuos = residuals(modelo)), aes(ajustados, residuos)) +\n  geom_point(alpha = .6) + geom_hline(yintercept = 0, linetype = "dashed") + theme_minimal()',
+      interpretacion:"La pendiente (con su IC 95%) indica el cambio esperado en el resultado por cada unidad del predictor. Revisa el gráfico de residuos frente a ajustados antes de confiar en el modelo: un patrón (no una nube aleatoria) indica mala especificación." },
+    reg_lineal_multiple: { analisis:'# Regresion lineal multiple\nmodelo <- lm(resultado ~ predictor1 + predictor2, data = datos)\nsummary(modelo)\nconfint(modelo)',
+      supuestos:'library(car)\nvif(modelo)                    # multicolinealidad (VIF > 10 es alerta)\npar(mfrow = c(2,2)); plot(modelo)\nshapiro.test(residuals(modelo))',
+      graficos:'library(ggplot2)\nggplot(data.frame(obs = datos$resultado, pred = fitted(modelo)), aes(pred, obs)) +\n  geom_point(alpha = .6) + geom_abline(slope = 1, intercept = 0, linetype = "dashed") +\n  labs(x = "Predicho", y = "Observado") + theme_minimal()\nggplot(data.frame(ajustados = fitted(modelo), residuos = residuals(modelo)), aes(ajustados, residuos)) +\n  geom_point(alpha = .6) + geom_hline(yintercept = 0, linetype = "dashed") + theme_minimal()',
+      interpretacion:"Cada coeficiente se interpreta controlando por el resto de predictores. Con VIF > 10 en algún predictor, sus coeficientes individuales son poco fiables aunque el modelo global lo sea." },
+    reg_logistica: { analisis:'# Regresion logistica\nmodelo <- glm(resultado ~ predictor1 + predictor2, data = datos, family = binomial)\nsummary(modelo)\nexp(cbind(OR = coef(modelo), confint(modelo)))',
+      supuestos:'library(car)\nvif(modelo)   # multicolinealidad\n# Linealidad con el logit para predictores continuos: prueba de Box-Tidwell o splines',
+      graficos:'library(ggplot2); library(pROC)\ndatos$prob_predicha <- predict(modelo, type = "response")\nggplot(datos, aes(prob_predicha, fill = factor(resultado))) + geom_density(alpha = .4) + theme_minimal()\nroc_obj <- roc(datos$resultado, datos$prob_predicha)\nplot(roc_obj); auc(roc_obj)                                   # curva ROC\nlibrary(rms); val.prob(datos$prob_predicha, datos$resultado)  # grafico de calibracion',
+      interpretacion:"exp(β) es el odds ratio: cuánto se multiplican las odds del evento por cada unidad del predictor. Revisa siempre la curva ROC (discriminación) y el gráfico de calibración (¿las probabilidades predichas coinciden con las observadas?), no solo el p-valor de cada coeficiente." },
     reg_logistica_ordinal: '# Regresion logistica ordinal\nlibrary(MASS); library(brant)\nmodelo <- polr(resultado ~ predictor1 + predictor2, data = datos, Hess = TRUE)\nsummary(modelo)\nbrant(modelo)   # test de odds proporcionales\nexp(cbind(OR = coef(modelo), confint(modelo)))',
     reg_multinomial: '# Regresion multinomial\nlibrary(nnet)\nmodelo <- multinom(resultado ~ predictor1 + predictor2, data = datos)\nsummary(modelo)\nexp(coef(modelo))',
     reg_poisson: '# Regresion de Poisson\nlibrary(AER)\nmodelo <- glm(resultado ~ predictor, data = datos, family = poisson,\n              offset = log(tiempo_exposicion))   # offset solo si modelas una tasa\nsummary(modelo)\nexp(cbind(RR = coef(modelo), confint(modelo)))\ndispersiontest(modelo)   # comprobar sobredispersion',
     reg_binomial_negativa: '# Regresion binomial negativa\nlibrary(MASS)\nmodelo <- glm.nb(resultado ~ predictor, data = datos)\nsummary(modelo)\nexp(cbind(RR = coef(modelo), confint(modelo)))',
     reg_zeroinflated: '# Modelo con exceso de ceros (ZIP / ZINB)\nlibrary(pscl)\nmodelo <- zeroinfl(resultado ~ predictor | predictor, data = datos, dist = "negbin")\nsummary(modelo)',
-    logrank: '# Test de Log-Rank sobre Kaplan-Meier\nlibrary(survival); library(survminer)\najuste <- survfit(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nsurvdiff(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nggsurvplot(ajuste, data = datos, risk.table = TRUE, pval = TRUE)',
-    cox: '# Regresion de Cox\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento) ~ predictor, data = datos)\nsummary(modelo)\ncox.zph(modelo)   # riesgos proporcionales (residuos de Schoenfeld)',
+    logrank: { analisis:'# Test de Log-Rank sobre Kaplan-Meier\nlibrary(survival)\najuste <- survfit(Surv(tiempo_evento, evento) ~ grupo, data = datos)\nsurvdiff(Surv(tiempo_evento, evento) ~ grupo, data = datos)',
+      supuestos:'library(survminer)\n# Riesgos proporcionales aproximados: las curvas no deberian cruzarse; log(-log(S)) aprox. paralelas:\nggsurvplot(ajuste, data = datos, fun = "cloglog")',
+      graficos:'library(survminer)\nggsurvplot(ajuste, data = datos, risk.table = TRUE, pval = TRUE, conf.int = TRUE,\n           xlab = "Tiempo", ylab = "Probabilidad de supervivencia")',
+      interpretacion:"El p-valor del log-rank no estima un tamaño de efecto: para un hazard ratio con IC 95%, ajusta además un modelo de Cox univariante sobre la misma variable de grupo." },
+    cox: { analisis:'# Regresion de Cox\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento) ~ predictor, data = datos)\nsummary(modelo)',
+      supuestos:'cox.zph(modelo)              # riesgos proporcionales (residuos de Schoenfeld); p < .05 indica violacion\nplot(cox.zph(modelo))        # HR(t) deberia ser aprox. horizontal',
+      graficos:'library(survminer)\nggforest(modelo, data = datos)      # forest plot de hazard ratios\nplot(cox.zph(modelo))               # comprobacion grafica de riesgos proporcionales',
+      interpretacion:"exp(β) es el hazard ratio: cuánto se multiplica el riesgo instantáneo por cada unidad del predictor. Si cox.zph() es significativo para una variable, su HR no es constante en el tiempo — considera estratificar por ella o dejar que su efecto varíe con el tiempo." },
     cox_estratificado: '# Cox estratificado\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento) ~ predictor + strata(centro), data = datos)\nsummary(modelo)',
     cox_tiempo_variable: '# Cox con covariable dependiente del tiempo (formato de intervalos)\nlibrary(survival)\nmodelo <- coxph(Surv(inicio, fin, evento) ~ predictor_tiempo_variable, data = datos_intervalos)\nsummary(modelo)',
     riesgos_causa_especifica: '# Riesgos causa-especificos (evento competitivo censurado)\nlibrary(survival)\nmodelo <- coxph(Surv(tiempo_evento, evento == 1) ~ predictor, data = datos)\nsummary(modelo)',
@@ -895,7 +948,90 @@
   function rcodeBlockHtml(testId){
     var code = RCODE[testId];
     if(!code) return "";
-    return '<h4>Código reproducible (R)</h4><div class="formula-box" style="font-size:.82rem; white-space:pre;">'+escapeHtml(code)+'</div>';
+    if(typeof code === "string"){
+      return '<h4>Código reproducible (R)</h4><div class="formula-box" style="font-size:.82rem; white-space:pre;">'+escapeHtml(code)+'</div>';
+    }
+    var parts = [{k:"analisis",l:"Análisis"},{k:"graficos",l:"Gráficos"},{k:"supuestos",l:"Supuestos"},{k:"interpretacion",l:"Interpretación"}].filter(function(p){ return !!code[p.k]; });
+    var uid = testId+"-"+Math.random().toString(36).slice(2,7);
+    var tabs = parts.map(function(p,i){ return '<button type="button" class="rcode-tab-btn" data-tab="'+p.k+'" aria-selected="'+(i===0)+'">'+p.l+'</button>'; }).join("");
+    var panels = parts.map(function(p,i){
+      var isCode = p.k !== "interpretacion";
+      var blockId = "rcode-"+uid+"-"+p.k;
+      return '<div class="rcode-tabpanel" data-panel="'+p.k+'" '+(i===0?"":"hidden")+'>'+
+        (isCode ? '<div class="formula-box" id="'+blockId+'" style="font-size:.82rem; white-space:pre;">'+escapeHtml(code[p.k])+'</div><button type="button" class="text-btn rcode-copy" data-copy-id="'+blockId+'"><svg><use href="#i-check"/></svg>Copiar</button>'
+                 : '<p style="font-size:.9rem; line-height:1.6;">'+escapeHtml(code[p.k])+'</p>')+
+        '</div>';
+    }).join("");
+    return '<h4>Código reproducible (R)</h4><div class="rcode-tabs">'+
+      '<div class="rcode-tabnav">'+tabs+'</div>'+panels+'</div>';
+  }
+
+  /* ============================================================
+     COMPARACIONES MÚLTIPLES / POST-HOC (Tukey, Holm-Bonferroni, Dunnett, Games-Howell)
+  ============================================================ */
+  var POSTHOC = {
+    tukey: { name:"Tukey HSD", scenario:"Comparar todos los grupos entre sí",
+      explicacion:"Compara la media de cada grupo con la de todos los demás, ajustando el umbral de significación para controlar el error Tipo I conjunto de todas las comparaciones (error familywise).",
+      cuando:"Cuando quieres comparar todos los grupos entre sí, sin haber decidido de antemano qué parejas concretas te interesan, tras un ANOVA o ANCOVA con varianzas homogéneas.",
+      supuestos:["Homogeneidad de varianzas entre grupos.","Funciona mejor con tamaños de grupo similares (diseño equilibrado), aunque tolera cierto desequilibrio.","Los mismos supuestos del ANOVA/ANCOVA del que procede (residuos aproximadamente normales)."],
+      rcode:'library(emmeans)\nmodelo <- aov(resultado ~ grupo, data = datos)   # o lm() para ANCOVA\nemmeans(modelo, pairwise ~ grupo, adjust = "tukey")',
+      rcode_grafico:'library(emmeans); library(ggplot2)\ncomp <- emmeans(modelo, pairwise ~ grupo, adjust = "tukey")\nplot(comp$emmeans, comparisons = TRUE) + theme_minimal()',
+      interpretacion:"Cada comparación por pares tiene su propio IC 95% ajustado; una diferencia es significativa si su IC no incluye el 0, o si el p-valor ajustado es < .05." },
+    holm_bonferroni: { name:"Holm / Bonferroni", scenario:"Comparar solo algunas parejas seleccionadas previamente",
+      explicacion:"Ajustan el umbral de significación cuando se realizan varias comparaciones planificadas de antemano, no necesariamente todos los pares posibles. Bonferroni divide α entre el número de comparaciones; Holm aplica el mismo principio de forma secuencial y suele ser menos conservador, con mayor potencia estadística.",
+      cuando:"Cuando comparas solo algunas parejas concretas decididas antes de ver los datos, o cuando repites una prueba sobre varias variables o subgrupos. Ninguno de los dos es «mejor» de forma absoluta frente a Tukey: depende de si el objetivo son todas las comparaciones posibles (Tukey) o unas pocas concretas (Holm/Bonferroni).",
+      supuestos:["Las comparaciones deben estar especificadas antes de ver los resultados (contraste planificado), no elegidas después de mirarlos (eso sería un análisis exploratorio y debería declararse como tal).","No exige un diseño equilibrado."],
+      rcode:'pares <- pairwise.t.test(datos$resultado, datos$grupo, p.adjust.method = "holm")   # o "bonferroni"\npares',
+      rcode_grafico:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_boxplot() + geom_jitter(width = .15, alpha = .5) +\n  theme_minimal()   # añade significación manualmente con ggsignif si procede',
+      interpretacion:"Compara cada p-valor ajustado con .05: con Holm, los p-valores se ordenan de menor a mayor y se comparan con umbrales progresivamente menos estrictos, por lo que dos análisis con los mismos datos pero distinto número de comparaciones planificadas pueden dar conclusiones distintas — decide las comparaciones antes de ver los datos." },
+    dunnett: { name:"Dunnett", scenario:"Comparar cada grupo frente a un único grupo control",
+      explicacion:"Compara cada grupo de tratamiento frente a un único grupo control, sin comparar los tratamientos entre sí, ajustando el error Tipo I específicamente para ese patrón de comparaciones (más potente que Tukey cuando solo interesa esto).",
+      cuando:"Cuando el objetivo es comparar varios grupos con un único grupo control (ej. varias dosis frente a placebo), y no interesa comparar los tratamientos entre sí.",
+      supuestos:["Homogeneidad de varianzas entre grupos.","Un grupo control claramente definido como referencia.","Los mismos supuestos del ANOVA/ANCOVA del que procede."],
+      rcode:'library(multcomp)\nmodelo <- aov(resultado ~ grupo, data = datos)   # "grupo" con "control" como nivel de referencia\nsummary(glht(modelo, linfct = mcp(grupo = "Dunnett")))',
+      rcode_grafico:'library(ggplot2)\nggplot(datos, aes(grupo, resultado)) +\n  geom_boxplot() +\n  geom_hline(yintercept = mean(datos$resultado[datos$grupo == "control"]), linetype = "dashed", color = "red") +\n  theme_minimal()',
+      interpretacion:"Cada comparación frente al control tiene su propio IC 95% ajustado por el patrón de comparaciones «todos contra uno»; no lo interpretes como comparaciones entre los grupos de tratamiento, que no se han estimado." },
+    games_howell: { name:"Games-Howell", scenario:"Comparar todos los grupos sin homogeneidad de varianzas",
+      explicacion:"Compara todos los pares de grupos sin asumir varianzas iguales, usando una corrección tipo Welch para cada comparación individual. Es la alternativa a Tukey cuando falla la homogeneidad de varianzas.",
+      cuando:"Cuando quieres comparar todos los grupos entre sí (como con Tukey), pero las varianzas no son homogéneas — especialmente si además los tamaños de grupo son desiguales, donde es más robusto que Tukey.",
+      supuestos:["No requiere homogeneidad de varianzas.","Funciona razonablemente incluso con tamaños de grupo distintos.","Los mismos supuestos de forma de distribución que la t de Welch (evaluación conjunta de residuos, sin asimetría grave ni outliers muy influyentes)."],
+      rcode:'library(rstatix)\ngames_howell_test(datos, resultado ~ grupo)',
+      rcode_grafico:'library(rstatix); library(ggpubr)\nres <- games_howell_test(datos, resultado ~ grupo)\nggboxplot(datos, x = "grupo", y = "resultado", add = "jitter") +\n  stat_pvalue_manual(res, label = "p.adj.signif")',
+      interpretacion:"Al igual que Tukey, cada comparación tiene su propio IC 95% ajustado, pero calculado sin asumir varianzas iguales — por eso los IC pueden tener anchuras distintas entre pares de grupos con varianzas muy diferentes." }
+  };
+  var postHocOpen = {};
+  var POSTHOC_TEST_IDS = ["anova_1f","ancova","anova_2f","anova_mixto"];
+  function postHocSelectorHtml(testId){
+    var uid = "ph-"+testId;
+    var opts = [
+      {k:"tukey", label:"Comparar todos los grupos entre sí"},
+      {k:"holm_bonferroni", label:"Comparar solo algunas parejas seleccionadas"},
+      {k:"dunnett", label:"Comparar cada grupo frente a un único control"},
+      {k:"games_howell", label:"Comparar todos los grupos, sin homogeneidad de varianzas"}
+    ];
+    var selected = postHocOpen[uid];
+    var chips = opts.map(function(o){ return '<button type="button" class="chip posthoc-chip" data-uid="'+uid+'" data-method="'+o.k+'" aria-pressed="'+(selected===o.k)+'">'+o.label+'</button>'; }).join("");
+    var detail = "";
+    if(selected){
+      var m = POSTHOC[selected];
+      detail = '<div class="multi-box" style="margin-top:.9rem;">'+
+        '<span class="alt-label">'+escapeHtml(m.name)+' — '+escapeHtml(m.scenario)+'</span>'+
+        '<p style="margin-bottom:.6rem;"><b>Qué hace: </b>'+escapeHtml(m.explicacion)+'</p>'+
+        '<p style="margin-bottom:.6rem;"><b>Cuándo usarlo: </b>'+escapeHtml(m.cuando)+'</p>'+
+        '<p style="margin-bottom:.3rem; font-weight:700;">Supuestos</p>'+
+        '<ul class="assump-list" style="margin-bottom:.6rem;">'+m.supuestos.map(function(s){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(s)+'</span></li>';}).join("")+'</ul>'+
+        '<p style="margin-bottom:.6rem;"><b>Interpretación: </b>'+escapeHtml(m.interpretacion)+'</p>'+
+        '<p style="font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:.3rem;">Código R — comparaciones</p>'+
+        '<div class="formula-box" id="'+uid+'-code" style="font-size:.8rem; white-space:pre; margin-bottom:.4rem;">'+escapeHtml(m.rcode)+'</div>'+
+        '<button type="button" class="text-btn rcode-copy" data-copy-id="'+uid+'-code" style="margin-bottom:.7rem;"><svg><use href="#i-check"/></svg>Copiar</button>'+
+        '<p style="font-size:.7rem; font-family:var(--font-mono); text-transform:uppercase; letter-spacing:.06em; color:var(--text-muted); margin-bottom:.3rem;">Código R — gráfico de comparaciones e IC</p>'+
+        '<div class="formula-box" id="'+uid+'-codeplot" style="font-size:.8rem; white-space:pre;">'+escapeHtml(m.rcode_grafico)+'</div>'+
+        '<button type="button" class="text-btn rcode-copy" data-copy-id="'+uid+'-codeplot"><svg><use href="#i-check"/></svg>Copiar</button>'+
+      '</div>';
+    }
+    return '<div class="req-block"><span class="req-title">¿Qué comparaciones quieres realizar?</span>'+
+      '<p style="font-size:.85rem; color:var(--text-muted); line-height:1.55; margin-bottom:.8rem;">Distingue entre comparaciones post-hoc exploratorias (decididas después de ver los datos, entre todos los grupos) y contrastes planificados (decididos antes de analizar, sobre parejas concretas) — el método adecuado depende de tu objetivo, no hay uno universalmente mejor.</p>'+
+      '<div class="chip-row">'+chips+'</div>'+detail+'</div>';
   }
 
   /* ============================================================
@@ -925,7 +1061,7 @@
       ] },
 
     q_cat_grupos_tabla:{ type:"question", text:"¿Tienes una tabla 2×2 con muestra pequeña, o frecuencias esperadas menores de 5 en alguna celda?",
-      help:"Regla habitual: se necesitan frecuencias esperadas ≥5 en al menos el 80% de las celdas para que la aproximación de Chi-cuadrado sea fiable. Con tablas 2×2 y muestras pequeñas, el test exacto de Fisher es preferible.",
+      help:"El valor de 5 se refiere a la frecuencia esperada dentro de las celdas de la tabla, no al tamaño total de la muestra (Eᵢ = total_fila × total_columna / n — calcúlala antes de decidir). Regla orientativa: ninguna frecuencia esperada debería ser inferior a 1, y no más del 20% de las celdas deberían tener frecuencias esperadas inferiores a 5. En tablas 2×2 con frecuencias esperadas pequeñas, el test exacto de Fisher es preferible.",
       options:[
         {label:"No, la muestra y las frecuencias esperadas son adecuadas", next:"res_chi2_grupos"},
         {label:"Sí, frecuencias esperadas pequeñas o tabla 2×2 con muestra reducida", next:"res_fisher_grupos"}
@@ -979,7 +1115,11 @@
 
     q_comp_mas_ind_sup:{ type:"question", text:"¿La evaluación conjunta de los residuos (Q-Q plot, histograma, homocedasticidad entre grupos, outliers) no muestra violaciones relevantes?",
       help:"No te bases en una única prueba de normalidad aislada («Shapiro-Wilk p < .05 → no paramétrica») — con muestras grandes detecta desviaciones triviales, y con muestras pequeñas tiene poca potencia. Evalúa conjuntamente: forma de la distribución en cada grupo, homogeneidad de varianzas (test de Levene), observaciones influyentes y tamaño muestral.",
-      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"res_anova_1f"}, {label:"No: asimetría grave, varianzas muy heterogéneas u outliers influyentes", next:"res_kruskal_wallis"} ] },
+      options:[ {label:"Sí, la evaluación conjunta no sugiere problemas relevantes", next:"q_anova_covar"}, {label:"No: asimetría grave, varianzas muy heterogéneas u outliers influyentes", next:"res_kruskal_wallis"} ] },
+
+    q_anova_covar:{ type:"question", text:"¿Necesitas ajustar la comparación por una o más variables que pueden influir en el resultado, como la edad, el sexo, el IMC o el valor basal?",
+      help:"Estas variables (covariables) son distintas de tu variable principal de agrupación o tratamiento: no son lo que quieres comparar, sino factores que quieres controlar para que no distorsionen la comparación entre grupos.",
+      options:[ {label:"No, comparo los grupos sin ajustar por otras variables", next:"res_anova_1f"}, {label:"Sí, necesito ajustar por una o más covariables", next:"res_ancova_desde_anova"} ] },
 
     q_comp_mas_rep_sup:{ type:"question", text:"¿La evaluación conjunta de las diferencias entre condiciones (Q-Q plot, histograma, outliers) sugiere una distribución razonable?",
       help:"Igual que en cualquier otro contraste: combina la inspección visual con el tamaño muestral, en vez de decidir a partir de un único p-valor de normalidad.",
@@ -1009,7 +1149,7 @@
       ] },
 
     q_cat_asoc_tabla:{ type:"question", text:"¿Tienes una tabla 2×2 con muestra pequeña, o frecuencias esperadas menores de 5 en alguna celda?",
-      help:"Regla habitual: se necesitan frecuencias esperadas ≥5 en al menos el 80% de las celdas para que la aproximación de Chi-cuadrado sea fiable. Con tablas 2×2 y muestras pequeñas, el test exacto de Fisher es preferible.",
+      help:"El valor de 5 se refiere a la frecuencia esperada dentro de las celdas de la tabla, no al tamaño total de la muestra (Eᵢ = total_fila × total_columna / n — calcúlala antes de decidir). Regla orientativa: ninguna frecuencia esperada debería ser inferior a 1, y no más del 20% de las celdas deberían tener frecuencias esperadas inferiores a 5. En tablas 2×2 con frecuencias esperadas pequeñas, el test exacto de Fisher es preferible.",
       options:[
         {label:"No, la muestra y las frecuencias esperadas son adecuadas", next:"res_chi2_asoc"},
         {label:"Sí, frecuencias esperadas pequeñas o tabla 2×2 con muestra reducida", next:"res_fisher_asoc"}
@@ -1111,6 +1251,7 @@
       chart:{id:"boxplot", note:"Boxplot o violin plot con todos los puntos individuales visibles, dado el tamaño muestral pequeño o la presencia de outliers."} },
     res_t_pareada:{ type:"result", testId:"t_pareada", justification:"Comparas las mismas unidades en dos momentos o condiciones (diseño pareado) y las diferencias siguen una distribución normal: usa la t de Student para muestras pareadas.", chart:{id:"boxplot", note:"Boxplot de las diferencias por sujeto, o líneas que conecten cada par antes-después."} },
     res_ancova:{ type:"result", testId:"ancova", justification:"Tienes dos o más grupos, cada uno con una medición basal y una única medición posterior: no compares el cambio bruto entre grupos ni los resultados de un test pareado dentro de cada grupo por separado —eso no equivale a una comparación entre grupos—. El ANCOVA, usando el valor basal (y otras covariables relevantes) como predictor, compara los grupos directamente y con mayor precisión estadística.", chart:{id:"scatter_plot", note:"Dispersión del valor basal frente al posterior coloreada por grupo, con las rectas ajustadas; o un gráfico de medias ajustadas (least-squares means) con IC 95% por grupo."} },
+    res_ancova_desde_anova:{ type:"result", testId:"ancova", justification:"Quieres comparar la media de tu variable entre grupos, pero necesitas ajustar la comparación por una o más covariables (edad, sexo, IMC, valor basal…) que pueden influir en el resultado. El ANCOVA no elimina esa influencia: la ajusta estadísticamente, comparando los grupos como si todos partieran del mismo valor de la covariable.", chart:{id:"scatter_plot", note:"Dispersión de la covariable frente al resultado, coloreada por grupo, con las rectas ajustadas; o medias ajustadas (least-squares means) con IC 95% por grupo."} },
     res_prepost_longitudinal:{ type:"guidance", title:"Con varias mediciones a lo largo del tiempo, analiza la interacción grupo × tiempo",
       text:"Cuando hay más de una medición posterior a la basal, la pregunta relevante ya no es «¿mejoró cada grupo?» sino «¿difiere la trayectoria entre grupos?» —eso es la interacción grupo × tiempo—. No la sustituyas por pruebas pareadas separadas dentro de cada grupo, ni por comparar si un grupo alcanza significación y el otro no. Usa un ANOVA Mixto (grupos × condiciones) si no hay datos faltantes ni estructura anidada, o un Modelo Mixto si los hay.",
       links:[ {id:"anova_mixto", note:"clásico, sin datos faltantes ni anidamiento"}, {id:"mixed_model", note:"con datos faltantes o estructura anidada/jerárquica"} ],
@@ -1644,6 +1785,7 @@
           badgeRowHtml(test)+
           '<p class="result-just">'+escapeHtml(node.justification)+'</p>'+
           altHtml + effectBlockHtml(test) + multiplicityBlockHtml(test) + chartBlockHtml(node.chart) + requirementsBlockHtml(test) +
+          (POSTHOC_TEST_IDS.indexOf(test.id)!==-1 ? postHocSelectorHtml(test.id) : "") +
           '<div class="result-actions">'+
             '<button class="btn btn-primary" id="wiz-view-detail" type="button">Ver en Diccionario<svg><use href="#i-arrow"/></svg></button>'+
             (RCODE[test.id] ? '<button class="btn btn-ghost" id="wiz-gen-plan" type="button"><svg><use href="#i-file"/></svg>Generar plan de análisis</button>' : '')+
@@ -1746,6 +1888,7 @@
       '<h4>Requisitos / supuestos previos</h4><ul class="assump-list">'+test.assumptions.map(function(a){return '<li><svg><use href="#i-check"/></svg><span>'+escapeHtml(a)+'</span></li>';}).join("")+'</ul>'+
       (test.effect ? '<h4>Tamaño del efecto</h4><p><b>'+escapeHtml(test.effect.name)+'.</b> '+escapeHtml(test.effect.note)+' Preséntalo siempre con su IC 95%.</p>' : '')+
       (test.multiplicity ? '<h4>Comparaciones múltiples</h4><p>'+escapeHtml(test.multiplicity)+'</p>' : '')+
+      (POSTHOC_TEST_IDS.indexOf(test.id)!==-1 ? postHocSelectorHtml(test.id) : '')+
       rcodeBlockHtml(test.id)+
       relatedHtml;
   }
@@ -2164,6 +2307,55 @@
     a.href = url; a.download = "plan-analisis.txt";
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  });
+
+  /* ============================================================
+     14C. INTERACCIONES GLOBALES: pestañas de código R, copiar, post-hoc
+  ============================================================ */
+  function copyCodeBlock(btn){
+    var target = document.getElementById(btn.getAttribute("data-copy-id"));
+    if(!target) return;
+    var text = target.textContent;
+    function done(){
+      var original = btn.innerHTML;
+      btn.innerHTML = '<svg><use href="#i-check"/></svg>Copiado';
+      setTimeout(function(){ btn.innerHTML = original; }, 1600);
+    }
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, function(){
+        var r = document.createRange(); r.selectNodeContents(target);
+        var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+        try{ document.execCommand("copy"); done(); }catch(e){}
+        sel.removeAllRanges();
+      });
+    } else {
+      var r = document.createRange(); r.selectNodeContents(target);
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      try{ document.execCommand("copy"); done(); }catch(e){}
+      sel.removeAllRanges();
+    }
+  }
+
+  document.addEventListener("click", function(e){
+    var tabBtn = e.target.closest(".rcode-tab-btn");
+    if(tabBtn){
+      var tabs = tabBtn.closest(".rcode-tabs");
+      Array.prototype.forEach.call(tabs.querySelectorAll(".rcode-tab-btn"), function(b){ b.setAttribute("aria-selected", b===tabBtn ? "true":"false"); });
+      Array.prototype.forEach.call(tabs.querySelectorAll(".rcode-tabpanel"), function(p){ p.hidden = (p.getAttribute("data-panel") !== tabBtn.getAttribute("data-tab")); });
+      return;
+    }
+    var copyBtn = e.target.closest(".rcode-copy");
+    if(copyBtn){ copyCodeBlock(copyBtn); return; }
+
+    var phChip = e.target.closest(".posthoc-chip");
+    if(phChip){
+      var uid = phChip.getAttribute("data-uid");
+      var method = phChip.getAttribute("data-method");
+      postHocOpen[uid] = (postHocOpen[uid] === method) ? null : method;
+      if(e.target.closest("#wizard-stage")){ renderWizard(); }
+      else if(e.target.closest("#dict-grid")){ renderDictionary(); }
+      return;
+    }
   });
 
   /* ============================================================
